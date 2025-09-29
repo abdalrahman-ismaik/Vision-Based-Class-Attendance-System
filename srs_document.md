@@ -1,169 +1,248 @@
 # Software Requirements Specification (SRS)
-## Vision-based Class Attendance System
+## Research-Enhanced Vision-based Class Attendance System with AI Augmentation
 
 ### Document Information
-- **Project**: Vision-based Class Attendance System
+- **Project**: Vision-based Class Attendance System with Novel AI Data Augmentation
 - **Course**: COSC3030 - Introduction to Artificial Intelligence
-- **Version**: 1.0
+- **Version**: 2.0 (Research-Enhanced)
 - **Date**: September 2025
+- **Research Focus**: AI-driven face augmentation and ensemble classification for superior accuracy
 
 ---
 
 ## 1. Introduction
 
 ### 1.1 Purpose
-This document specifies the requirements for an automated class attendance system that leverages computer vision and deep learning techniques to identify and track student attendance using existing CCTV infrastructure.
+This document specifies the requirements for a research-oriented automated class attendance system that introduces novel AI-driven face data augmentation and ensemble classification techniques to achieve >95% recognition accuracy while investigating the impact of wired vs wireless camera connections on system performance.
 
 ### 1.2 Scope
-The system will provide:
-- Automated face detection and recognition
-- Student enrollment via mobile application
-- Real-time attendance tracking
-- Integration with existing classroom CCTV cameras
-- Performance analytics and reporting
+The research-enhanced system will provide:
+- **Novel AI Face Augmentation**: Generate synthetic training data using generative AI models
+- **Ensemble Classification Architecture**: Multi-layer classifier system for superior accuracy
+- **Video-Based Registration Protocol**: Optimized continuous video capture with real-time face extraction and quality validation protocol
+- **Connection Performance Analysis**: Comparative study of wired vs wireless CCTV performance
+- **Research-grade Evaluation Framework**: Comprehensive metrics and statistical validation
 
-### 1.3 Definitions and Acronyms
-- **CCTV**: Closed-Circuit Television
-- **FaceNet**: Deep neural network for face recognition
-- **SRS**: Software Requirements Specification
-- **API**: Application Programming Interface
-- **GUI**: Graphical User Interface
+### 1.3 Research Objectives
+- **Primary Goal**: Achieve >95% face recognition accuracy consistently
+- **Innovation Focus**: Introduce AI-generated face augmentation for robust training datasets
+- **Performance Study**: Quantify improvements from wired camera connections
+- **Academic Contribution**: Create reproducible research methodology for attendance systems
+
+### 1.4 Definitions and Acronyms
+- **GAN**: Generative Adversarial Network
+- **StyleGAN3**: State-of-the-art generative model for face synthesis
+- **Ensemble Learning**: Combining multiple classifiers for improved performance
+- **Ablation Study**: Systematic evaluation of individual components
+- **Meta-classifier**: Higher-level classifier that combines outputs from multiple base classifiers
 
 ---
 
 ## 2. System Overview
 
-### 2.1 System Description
-The Vision-based Class Attendance System is an AI-powered solution that automates attendance tracking by analyzing video feeds from classroom cameras. The system uses deep learning models to detect, extract, and match facial features against a pre-enrolled student database.
+### 2.1 Research-Enhanced System Description
+The system is a research platform that advances the state-of-the-art in automated attendance tracking through three main innovations:
+1. AI-powered face data augmentation using generative models
+2. Novel ensemble classification architecture with specialized sub-classifiers
+3. Empirical analysis of connection infrastructure impact on recognition performance
 
 ### 2.2 System Architecture
-- **Mobile Enrollment App**: Student registration interface
-- **Core Recognition Engine**: FaceNet-based face recognition system
-- **Database Server**: Student gallery and attendance records
-- **Web Dashboard**: Attendance monitoring and management
-- **CCTV Integration Module**: Camera feed processing
+- **Enhanced Mobile App**: Continuous video capture with real-time face extraction and quality validation
+- **AI Augmentation Engine**: StyleGAN3-based synthetic data generation
+- **Ensemble Recognition Core**: Multi-layer classification with decision fusion
+- **Performance Monitoring**: Real-time connection and accuracy metrics
+- **Research Analytics Dashboard**: Statistical analysis and comparison tools
 
 ---
 
 ## 3. Functional Requirements
 
-### 3.1 Face Detection and Recognition (FR-01)
-- **FR-01.1**: System shall detect human faces in video streams with minimum 95% accuracy
-- **FR-01.2**: System shall extract 128-dimensional face embeddings using FaceNet architecture
-- **FR-01.3**: System shall compare face signatures using cosine distance metric
-- **FR-01.4**: System shall classify faces as "enrolled" or "unknown" based on similarity threshold
+### 3.1 AI-Powered Face Data Augmentation (FR-01) - NOVEL
+- **FR-01.1**: System shall generate minimum 50 synthetic face variations per enrolled student
+- **FR-01.2**: Augmentation shall systematically vary lighting conditions (20% of synthetic data)
+- **FR-01.3**: Augmentation shall generate pose variations from -30° to +30° yaw, -15° to +15° pitch (40% of synthetic data)
+- **FR-01.4**: Augmentation shall create scale variations simulating 3-8 meter camera distances (40% of synthetic data)
+- **FR-01.5**: Generated images shall pass quality validation with score >0.8
+- **FR-01.6**: System shall maintain metadata linking synthetic images to base captures
 
-### 3.2 Student Enrollment (FR-02)
-- **FR-02.1**: Mobile app shall capture student photos using device camera
-- **FR-02.2**: System shall require student ID input during enrollment
-- **FR-02.3**: System shall crop and preprocess face images automatically
-- **FR-02.4**: System shall store face embeddings and metadata in secure database
-- **FR-02.5**: System shall prevent duplicate enrollments for same student ID
+### 3.2 Video-Based Registration Protocol (FR-02) - INNOVATIVE ENHANCEMENT
+- **FR-02.1**: Mobile app shall record continuous video (8-12 seconds) with user face rotation
+- **FR-02.2**: System shall perform real-time face detection and tracking during video recording
+- **FR-02.3**: System shall provide real-time guidance for optimal pose coverage:
+  - Frontal view (-15° to +15° yaw)
+  - Left profile (15° to 60° yaw) 
+  - Right profile (-60° to -15° yaw)
+  - Up/down tilt variations (±20° pitch)
+- **FR-02.4**: System shall extract 15-25 high-quality frames with diverse poses from video
+- **FR-02.5**: Frame selection shall prioritize quality score >0.8 and pose diversity
+- **FR-02.6**: System shall display real-time coverage percentage and missing pose areas
+- **FR-02.7**: Registration shall complete when >80% pose coverage achieved or time limit reached
+- **FR-02.8**: System shall automatically trigger AI augmentation using selected video frames
 
-### 3.3 Attendance Tracking (FR-03)
-- **FR-03.1**: System shall process live CCTV feeds in real-time
-- **FR-03.2**: System shall log attendance timestamps for recognized students
-- **FR-03.3**: System shall handle multiple face detections in single frame
-- **FR-03.4**: System shall maintain attendance records with date/time stamps
+### 3.3 Ensemble Classification System (FR-03) - NOVEL
+- **FR-03.1**: System shall implement 4 specialized classifiers:
+  - Pose-specific classifier for frontal faces
+  - Lighting-condition adaptive classifier
+  - Distance/scale-aware classifier  
+  - Quality-based classifier for high-resolution images
+- **FR-03.2**: Meta-classifier shall fuse decisions from Layer 1 classifiers
+- **FR-03.3**: System shall achieve >95% recognition accuracy on validation dataset
+- **FR-03.4**: Ensemble shall provide confidence scores for all predictions
+- **FR-03.5**: System shall automatically select optimal classifier combination based on image characteristics
 
-### 3.4 System Validation (FR-04)
-- **FR-04.1**: System shall correctly identify enrolled students in test scenarios
-- **FR-04.2**: System shall label unrecognized individuals as "unknown"
-- **FR-04.3**: System shall maintain performance across varying conditions:
-  - Different distances from camera (1-5 meters)
-  - Various lighting conditions (indoor/outdoor, natural/artificial)
-  - Multiple face poses (frontal, profile, tilted)
+### 3.4 Wired Connection Integration (FR-04) - RESEARCH
+- **FR-04.1**: System shall support wired Ethernet connections for all 3 CCTV cameras
+- **FR-04.2**: System shall monitor connection quality metrics in real-time:
+  - Network latency
+  - Packet loss percentage
+  - Frame drop rate
+  - Video quality scores
+- **FR-04.3**: System shall log performance data for statistical analysis
+- **FR-04.4**: System shall maintain backward compatibility with wireless connections for comparison
 
-### 3.5 Reporting and Analytics (FR-05)
-- **FR-05.1**: System shall generate attendance reports by date/class
-- **FR-05.2**: System shall calculate attendance statistics (present/absent rates)
-- **FR-05.3**: System shall export attendance data in CSV/PDF formats
-- **FR-05.4**: System shall provide real-time attendance dashboard
+### 3.5 Research Evaluation Framework (FR-05) - NOVEL
+- **FR-05.1**: System shall implement ablation testing for each component:
+  - Baseline vs augmented training data
+  - Single classifier vs ensemble approach
+  - Wired vs wireless connection performance
+- **FR-05.2**: System shall generate statistical significance reports
+- **FR-05.3**: System shall create performance comparison visualizations
+- **FR-05.4**: System shall export research data in academic-standard formats
+
+### 3.6 Enhanced Attendance Tracking (FR-06)
+- **FR-06.1**: System shall process live video feeds with <100ms latency
+- **FR-06.2**: System shall handle up to 50 faces simultaneously per frame
+- **FR-06.3**: System shall log attendance with 99.9% timestamp accuracy
+- **FR-06.4**: System shall distinguish between enrolled students and unknown individuals
+- **FR-06.5**: System shall prevent duplicate attendance logging within 30-minute windows
 
 ---
 
 ## 4. Non-Functional Requirements
 
-### 4.1 Performance Requirements (NFR-01)
-- **NFR-01.1**: Face detection processing time ≤ 100ms per frame
-- **NFR-01.2**: Face recognition accuracy ≥ 95% under standard conditions
-- **NFR-01.3**: System shall process up to 30 FPS video streams
-- **NFR-01.4**: Database query response time ≤ 200ms
+### 4.1 Research Performance Requirements (NFR-01)
+- **NFR-01.1**: Recognition accuracy ≥ 95% on standardized test dataset
+- **NFR-01.2**: False positive rate ≤ 2% (research-grade requirement)
+- **NFR-01.3**: False negative rate ≤ 3% (research-grade requirement)
+- **NFR-01.4**: AI augmentation generation time ≤ 5 minutes per student
+- **NFR-01.5**: Ensemble classification time ≤ 150ms per face
 
-### 4.2 Scalability Requirements (NFR-02)
-- **NFR-02.1**: System shall support up to 500 enrolled students per class
-- **NFR-02.2**: System shall handle up to 10 concurrent CCTV streams
-- **NFR-02.3**: Database shall store attendance records for minimum 2 years
+### 4.2 System Scalability (NFR-02)
+- **NFR-02.1**: Support up to 1000 enrolled students per deployment
+- **NFR-02.2**: Handle 10,000+ synthetic training images per student
+- **NFR-02.3**: Process concurrent streams from 3 wired cameras at 30 FPS
+- **NFR-02.4**: Maintain performance with 10GB+ training dataset
 
-### 4.3 Reliability Requirements (NFR-03)
-- **NFR-03.1**: System uptime ≥ 99% during class hours
-- **NFR-03.2**: False positive rate ≤ 5%
-- **NFR-03.3**: False negative rate ≤ 10%
+### 4.3 Research Reliability (NFR-03)
+- **NFR-03.1**: System uptime ≥ 99.5% during evaluation periods
+- **NFR-03.2**: Reproducible results within ±1% accuracy variance
+- **NFR-03.3**: Consistent performance across different lighting conditions
+- **NFR-03.4**: Statistical significance (p < 0.05) for claimed improvements
 
-### 4.4 Security Requirements (NFR-04)
-- **NFR-04.1**: All student data shall be encrypted at rest and in transit
-- **NFR-04.2**: System shall implement user authentication and authorization
-- **NFR-04.3**: Face images shall be stored securely with access controls
+### 4.4 Data Quality Assurance (NFR-04)
+- **NFR-04.1**: Synthetic image quality score ≥ 0.8 on LPIPS metric
+- **NFR-04.2**: Generated faces shall maintain identity consistency
+- **NFR-04.3**: Training dataset balance: 30% original, 70% synthetic images
+- **NFR-04.4**: Metadata completeness for all generated samples
 
-### 4.5 Usability Requirements (NFR-05)
-- **NFR-05.1**: Mobile app enrollment process ≤ 2 minutes per student
-- **NFR-05.2**: Web dashboard shall be intuitive with minimal training required
-- **NFR-05.3**: System shall provide clear error messages and status indicators
-
----
-
-## 5. System Constraints
-
-### 5.1 Technical Constraints
-- Must use FaceNet architecture for face recognition
-- Must integrate with existing CCTV infrastructure
-- Must support mobile platforms (iOS/Android) for enrollment
-- Must use cosine distance for face similarity comparison
-
-### 5.2 Hardware Requirements
-- Server with GPU support for deep learning inference
-- Mobile devices with camera capability
-- Existing CCTV cameras with network connectivity
-- Minimum 1080p video resolution for optimal performance
-
-### 5.3 Software Dependencies
-- Python 3.8+ for backend development
-- TensorFlow/PyTorch for deep learning models
-- OpenCV for computer vision operations
-- SQLite/PostgreSQL for database management
+### 4.5 Research Ethics and Security (NFR-05)
+- **NFR-05.1**: Synthetic data generation shall not create privacy risks
+- **NFR-05.2**: All biometric data encrypted with AES-256
+- **NFR-05.3**: Research data shall be anonymizable for academic sharing
+- **NFR-05.4**: System shall comply with university ethical guidelines
 
 ---
 
-## 6. Performance Evaluation Metrics
+## 5. Research Constraints and Assumptions
 
-### 6.1 Primary Metrics
-- **Accuracy**: Overall correct identification rate
-- **Precision**: True positives / (True positives + False positives)
-- **Recall**: True positives / (True positives + False negatives)
-- **F1-Score**: Harmonic mean of precision and recall
+### 5.1 Technical Research Constraints
+- Must use StyleGAN2 or equivalent generative model for face augmentation
+- Ensemble must contain minimum 4 specialized classifiers
+- Must maintain comparison capability with baseline FaceNet
+- Wired connection testing requires physical infrastructure modification
 
-### 6.2 Secondary Metrics
-- **Processing Speed**: Frames per second
-- **Response Time**: Time from detection to identification
-- **Throughput**: Students processed per minute
-- **System Availability**: Uptime percentage
+### 5.2 Dataset Requirements
+- Minimum 100 enrolled students for statistical validity
+- Balanced demographic representation in test subjects
+- Controlled lighting conditions for baseline measurements
+- Ground truth validation for accuracy calculations
+
+### 5.3 Experimental Assumptions
+- University provides stable wired network infrastructure
+- Students consent to synthetic data generation for research
+- Consistent camera positioning throughout evaluation period
+- Minimal environmental changes during testing phases
 
 ---
 
-## 7. Acceptance Criteria
+## 6. Research Evaluation Metrics
 
-### 7.1 Functional Acceptance
-- All functional requirements (FR-01 through FR-05) implemented and tested
-- System successfully processes test video containing enrolled and unknown individuals
-- Mobile enrollment app successfully registers new students
-- Attendance reports generated accurately
+### 6.1 Primary Research Metrics
+- **Accuracy**: Overall correct identification rate (target ≥ 95%)
+- **Precision**: True positives / (True positives + False positives) (target ≥ 96%)
+- **Recall**: True positives / (True positives + False negatives) (target ≥ 94%)
+- **F1-Score**: Harmonic mean of precision and recall (target ≥ 95%)
 
-### 7.2 Performance Acceptance
-- Recognition accuracy ≥ 95% on validation dataset
-- System processes real-time video without significant delays
-- All non-functional requirements met or exceeded
+### 6.2 Novel Contribution Metrics
+- **Augmentation Benefit**: Accuracy improvement from synthetic data
+- **Ensemble Gain**: Performance boost from multi-classifier approach
+- **Connection Impact**: Accuracy difference between wired vs wireless
+- **Robustness Score**: Performance consistency across conditions
 
-### 7.3 Integration Acceptance
-- Successful integration with CCTV camera system
-- Mobile app communicates reliably with server
-- Database operations perform within specified time limits
+### 6.3 Research Quality Metrics
+- **Statistical Significance**: p-values for all claimed improvements
+- **Effect Size**: Cohen's d for practical significance
+- **Cross-validation Score**: k-fold validation results
+- **Generalization Ability**: Performance on unseen test subjects
+
+---
+
+## 7. Research Deliverables and Acceptance Criteria
+
+### 7.1 Technical Deliverables
+- **AI Augmentation Pipeline**: Functional system generating high-quality synthetic faces
+- **Ensemble Classifier**: Multi-layer system achieving >95% accuracy
+- **Wired Integration**: Physical connection setup with performance monitoring
+- **Evaluation Suite**: Comprehensive testing and statistical analysis tools
+
+### 7.2 Research Documentation
+- **Technical Report**: Detailed methodology and results analysis
+- **Research Paper Draft**: Academic-quality manuscript suitable for conference submission
+- **Open Source Code**: Clean, documented implementation for reproducibility
+- **Dataset Documentation**: Comprehensive metadata and usage guidelines
+
+### 7.3 Performance Benchmarks
+- **Baseline Comparison**: Minimum 3% improvement over standard FaceNet
+- **Consistency**: <2% accuracy variance across multiple runs
+- **Scalability**: Demonstrated performance with 500+ student database
+- **Real-world Validation**: Successful deployment in actual classroom environment
+
+### 7.4 Research Impact Goals
+- **Academic Contribution**: Novel methodology suitable for peer review
+- **Practical Application**: Deployable system for university use
+- **Open Science**: Reproducible research with shared resources
+- **Technology Transfer**: Framework applicable to other biometric applications
+
+---
+
+## 8. Success Criteria
+
+### 8.1 Technical Success
+- Recognition accuracy consistently ≥ 95% in controlled tests
+- AI augmentation generates visually realistic and identity-consistent faces
+- Ensemble system outperforms individual classifiers by ≥2%
+- Wired connection demonstrates measurable performance improvements
+
+### 8.2 Research Success
+- Statistical significance (p < 0.05) for all claimed improvements
+- Reproducible results across multiple evaluation runs
+- Comprehensive documentation enabling replication
+- Contribution to academic knowledge in biometric systems
+
+### 8.3 Academic Success
+- High-quality technical report demonstrating research rigor
+- Implementation suitable for open-source academic community
+- Methodology applicable to broader face recognition problems
+- Potential for conference publication or journal submission
+
+This research-enhanced SRS positions your project as a significant academic contribution while maintaining practical utility for real-world attendance tracking applications.
