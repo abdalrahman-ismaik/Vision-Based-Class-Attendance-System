@@ -1,0 +1,1015 @@
+openapi: 3.0.3
+info:
+  title: Mobile Student Registration API
+  description: RESTful API for mobile face registration app with AI integration
+  version: 1.0.0
+  contact:
+    name: HADIR Project Team
+    email: hadir@university.edu
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.hadir.university.edu/v1
+    description: Production server
+  - url: https://staging-api.hadir.university.edu/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Authentication endpoints
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Administrator login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh authentication token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Administrator logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  # Student management endpoints
+  /students:
+    get:
+      tags: [Students]
+      summary: List students with optional filtering
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/StudentStatus'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: search
+          in: query
+          schema:
+            type: string
+            description: Search by name or student ID
+      responses:
+        '200':
+          description: Students retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentListResponse'
+
+    post:
+      tags: [Students]
+      summary: Create a new student profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStudentRequest'
+      responses:
+        '201':
+          description: Student created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentResponse'
+        '409':
+          description: Student already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /students/{id}:
+    get:
+      tags: [Students]
+      summary: Get student by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Student retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentResponse'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Registration session endpoints
+  /registrations:
+    post:
+      tags: [Registration]
+      summary: Create a new registration session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRegistrationRequest'
+      responses:
+        '201':
+          description: Registration session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationSessionResponse'
+
+  /registrations/{id}/video:
+    put:
+      tags: [Registration]
+      summary: Upload registration video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                video:
+                  type: string
+                  format: binary
+                  description: Video file (MP4, max 50MB)
+                metadata:
+                  type: string
+                  description: JSON string with video metadata
+              required:
+                - video
+                - metadata
+      responses:
+        '200':
+          description: Video uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoUploadResponse'
+
+  /registrations/{id}/status:
+    get:
+      tags: [Registration]
+      summary: Get registration processing status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationStatusResponse'
+
+  /registrations/{id}/frames:
+    post:
+      tags: [Registration]
+      summary: Submit selected frames with metadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitFramesRequest'
+      responses:
+        '200':
+          description: Frames submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FramesSubmissionResponse'
+
+  # Export endpoints
+  /exports:
+    post:
+      tags: [Export]
+      summary: Create export package for AI system
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExportRequest'
+      responses:
+        '201':
+          description: Export package created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+
+  /exports/{id}:
+    get:
+      tags: [Export]
+      summary: Get export package status and download
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Export package ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+        '202':
+          description: Export package still processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+
+  # Sync endpoints
+  /sync/registrations:
+    post:
+      tags: [Sync]
+      summary: Bulk sync registration data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncRegistrationsRequest'
+      responses:
+        '200':
+          description: Sync completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncRegistrationsResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Basic types
+    StudentStatus:
+      type: string
+      enum: [pending, registered, incomplete, archived]
+
+    SessionStatus:
+      type: string
+      enum: [inProgress, completed, failed, cancelled, expired]
+
+    AdministratorRole:
+      type: string
+      enum: [operator, supervisor, admin]
+
+    # Request schemas
+    LoginRequest:
+      type: object
+      required: [username, password, deviceId]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 20
+        password:
+          type: string
+          minLength: 8
+        deviceId:
+          type: string
+
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    LogoutRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+
+    CreateStudentRequest:
+      type: object
+      required: [studentId, fullName]
+      properties:
+        studentId:
+          type: string
+          minLength: 5
+          maxLength: 20
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        dateOfBirth:
+          type: string
+          format: date
+        department:
+          type: string
+        program:
+          type: string
+
+    CreateRegistrationRequest:
+      type: object
+      required: [studentId, administratorId]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        administratorId:
+          type: string
+          format: uuid
+
+    SubmitFramesRequest:
+      type: object
+      required: [frames, qualityMetrics]
+      properties:
+        frames:
+          type: array
+          items:
+            $ref: '#/components/schemas/FrameData'
+        qualityMetrics:
+          $ref: '#/components/schemas/QualityMetrics'
+
+    CreateExportRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        format:
+          type: string
+          enum: [json, zip]
+          default: json
+        includeOriginalVideo:
+          type: boolean
+          default: false
+
+    SyncRegistrationsRequest:
+      type: object
+      required: [registrations, syncTimestamp]
+      properties:
+        registrations:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistrationSyncData'
+        syncTimestamp:
+          type: string
+          format: date-time
+
+    # Response schemas
+    LoginResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [token, refreshToken, administrator, expiresAt]
+          properties:
+            token:
+              type: string
+            refreshToken:
+              type: string
+            administrator:
+              $ref: '#/components/schemas/Administrator'
+            expiresAt:
+              type: string
+              format: date-time
+
+    RefreshTokenResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [token, expiresAt]
+          properties:
+            token:
+              type: string
+            expiresAt:
+              type: string
+              format: date-time
+
+    StudentResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Student'
+
+    StudentListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [students, pagination]
+          properties:
+            students:
+              type: array
+              items:
+                $ref: '#/components/schemas/Student'
+            pagination:
+              $ref: '#/components/schemas/PaginationInfo'
+
+    RegistrationSessionResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/RegistrationSession'
+
+    VideoUploadResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [videoId, processingStatus]
+          properties:
+            videoId:
+              type: string
+              format: uuid
+            processingStatus:
+              type: string
+              enum: [queued, processing, completed, failed]
+
+    RegistrationStatusResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [id, status, progress]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              $ref: '#/components/schemas/SessionStatus'
+            progress:
+              $ref: '#/components/schemas/ProcessingProgress'
+            qualityMetrics:
+              $ref: '#/components/schemas/QualityMetrics'
+            errors:
+              type: array
+              items:
+                type: string
+
+    FramesSubmissionResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [sessionId, status, framesProcessed, completedAt]
+          properties:
+            sessionId:
+              type: string
+              format: uuid
+            status:
+              $ref: '#/components/schemas/SessionStatus'
+            framesProcessed:
+              type: integer
+            completedAt:
+              type: string
+              format: date-time
+
+    ExportResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/ExportPackageReady'
+            - $ref: '#/components/schemas/ExportPackageProcessing'
+
+    SyncRegistrationsResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [processed, successful, failed, results]
+          properties:
+            processed:
+              type: integer
+            successful:
+              type: integer
+            failed:
+              type: integer
+            results:
+              type: array
+              items:
+                $ref: '#/components/schemas/SyncResult'
+            nextSyncTimestamp:
+              type: string
+              format: date-time
+
+    # Data models
+    Administrator:
+      type: object
+      required: [id, username, fullName, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        fullName:
+          type: string
+        role:
+          $ref: '#/components/schemas/AdministratorRole'
+        permissions:
+          type: array
+          items:
+            type: string
+
+    Student:
+      type: object
+      required: [id, studentId, fullName, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        dateOfBirth:
+          type: string
+          format: date
+        department:
+          type: string
+        program:
+          type: string
+        status:
+          $ref: '#/components/schemas/StudentStatus'
+        createdAt:
+          type: string
+          format: date-time
+        lastUpdatedAt:
+          type: string
+          format: date-time
+
+    RegistrationSession:
+      type: object
+      required: [id, studentId, administratorId, status, startedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        administratorId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    FrameData:
+      type: object
+      required: [imageData, timestampMs, qualityScore, poseAngles, faceMetrics]
+      properties:
+        imageData:
+          type: string
+          format: byte
+          description: Base64 encoded image data
+        timestampMs:
+          type: integer
+          minimum: 0
+        qualityScore:
+          type: number
+          minimum: 0.8
+          maximum: 1.0
+        poseAngles:
+          $ref: '#/components/schemas/PoseAngles'
+        faceMetrics:
+          $ref: '#/components/schemas/FaceMetrics'
+
+    PoseAngles:
+      type: object
+      required: [yaw, pitch, roll, confidence]
+      properties:
+        yaw:
+          type: number
+          minimum: -90
+          maximum: 90
+        pitch:
+          type: number
+          minimum: -90
+          maximum: 90
+        roll:
+          type: number
+          minimum: -180
+          maximum: 180
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    FaceMetrics:
+      type: object
+      required: [boundingBox, faceSize, sharpnessScore, lightingScore, symmetryScore]
+      properties:
+        boundingBox:
+          $ref: '#/components/schemas/BoundingBox'
+        faceSize:
+          type: number
+          minimum: 0.1
+          maximum: 1.0
+        sharpnessScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        lightingScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        symmetryScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        hasGlasses:
+          type: boolean
+        hasHat:
+          type: boolean
+        isSmiling:
+          type: boolean
+
+    BoundingBox:
+      type: object
+      required: [x, y, width, height]
+      properties:
+        x:
+          type: number
+          minimum: 0
+          maximum: 1
+        y:
+          type: number
+          minimum: 0
+          maximum: 1
+        width:
+          type: number
+          minimum: 0
+          maximum: 1
+        height:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    QualityMetrics:
+      type: object
+      required: [overallQuality, poseCoverage, qualityDistribution]
+      properties:
+        overallQuality:
+          type: number
+          minimum: 0
+          maximum: 1
+        poseCoverage:
+          $ref: '#/components/schemas/PoseCoverage'
+        qualityDistribution:
+          $ref: '#/components/schemas/QualityDistribution'
+
+    PoseCoverage:
+      type: object
+      required: [frontal, leftProfile, rightProfile, uptilt, downtilt, overall]
+      properties:
+        frontal:
+          type: number
+          minimum: 0
+          maximum: 100
+        leftProfile:
+          type: number
+          minimum: 0
+          maximum: 100
+        rightProfile:
+          type: number
+          minimum: 0
+          maximum: 100
+        uptilt:
+          type: number
+          minimum: 0
+          maximum: 100
+        downtilt:
+          type: number
+          minimum: 0
+          maximum: 100
+        overall:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    QualityDistribution:
+      type: object
+      required: [highQuality, mediumQuality, lowQuality, averageScore, standardDeviation]
+      properties:
+        highQuality:
+          type: integer
+          minimum: 0
+        mediumQuality:
+          type: integer
+          minimum: 0
+        lowQuality:
+          type: integer
+          minimum: 0
+        averageScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        standardDeviation:
+          type: number
+          minimum: 0
+
+    ProcessingProgress:
+      type: object
+      required: [currentStep, completedSteps, totalSteps, percentage]
+      properties:
+        currentStep:
+          type: string
+        completedSteps:
+          type: integer
+          minimum: 0
+        totalSteps:
+          type: integer
+          minimum: 1
+        percentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+
+    ExportPackageReady:
+      type: object
+      required: [id, sessionId, status, format, fileSize, downloadUrl, expiresAt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [ready]
+        format:
+          type: string
+          enum: [json, zip]
+        fileSize:
+          type: integer
+        downloadUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    ExportPackageProcessing:
+      type: object
+      required: [id, status, progress]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [preparing]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        estimatedCompletion:
+          type: string
+          format: date-time
+
+    RegistrationSyncData:
+      type: object
+      required: [localId, studentId, administratorId, completedAt, qualityScore, framesCount]
+      properties:
+        localId:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+        administratorId:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+        qualityScore:
+          type: number
+        framesCount:
+          type: integer
+        metadata:
+          type: object
+
+    SyncResult:
+      type: object
+      required: [localId, status]
+      properties:
+        localId:
+          type: string
+          format: uuid
+        remoteId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [synced, failed, duplicate]
+        error:
+          type: string
+
+    PaginationInfo:
+      type: object
+      required: [total, limit, offset, hasNext]
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasNext:
+          type: boolean
+
+    # Common response types
+    SuccessResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+            timestamp:
+              type: string
+              format: date-time
+            requestId:
+              type: string
+              format: uuid
