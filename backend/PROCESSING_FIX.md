@@ -18,6 +18,7 @@ python process_pending.py
 ```
 
 This will:
+
 - Find all students with `processing_status: "pending"`
 - Process each one sequentially
 - Update the database with results

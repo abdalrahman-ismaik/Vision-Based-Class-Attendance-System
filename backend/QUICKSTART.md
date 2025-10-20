@@ -18,6 +18,7 @@ pip install -r requirements.txt
 ### 2. Verify FaceNet Model
 
 Ensure the model checkpoint exists:
+
 ```bash
 ls ../FaceNet/mobilefacenet_arcface/best_model_epoch43_acc100.00.pth
 ```
@@ -39,6 +40,7 @@ python test_pipeline.py --test all
 ### Option 2: Manual API Testing
 
 #### Step 1: Start Server
+
 ```bash
 python app.py
 ```
@@ -65,6 +67,7 @@ curl -X POST http://localhost:5000/api/students/ \
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Student registered successfully. Face processing started in background.",
@@ -79,11 +82,13 @@ curl -X POST http://localhost:5000/api/students/ \
 #### Step 3: Wait for Processing
 
 Check status (wait until `processing_status` is `completed`):
+
 ```bash
 curl http://localhost:5000/api/students/S001
 ```
 
 **Response:**
+
 ```json
 {
   "student_id": "S001",
@@ -98,11 +103,13 @@ curl http://localhost:5000/api/students/S001
 #### Step 4: Train Classifier
 
 After **at least 2 students** are processed:
+
 ```bash
 curl -X POST http://localhost:5000/api/students/train-classifier
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Classifier trained successfully",
@@ -123,6 +130,7 @@ curl -X POST http://localhost:5000/api/students/recognize \
 ```
 
 **Response:**
+
 ```json
 {
   "recognized": true,
@@ -144,6 +152,7 @@ Visit `http://localhost:5000/api/docs` for interactive API documentation.
 ### Available Endpoints:
 
 **Students:**
+
 - `GET /api/students/` - List all students
 - `POST /api/students/` - Register new student
 - `GET /api/students/{student_id}` - Get student details
@@ -152,6 +161,7 @@ Visit `http://localhost:5000/api/docs` for interactive API documentation.
 - `POST /api/students/recognize` - Recognize face in image
 
 **Classes:**
+
 - `GET /api/classes/` - List all classes
 - `POST /api/classes/` - Create new class
 - `GET /api/classes/{class_id}` - Get class details
@@ -184,17 +194,20 @@ All in **5-10 seconds** per student!
 ## Troubleshooting
 
 ### "Pipeline not available"
+
 ```bash
 # Check if FaceNet model exists
 ls ../FaceNet/mobilefacenet_arcface/*.pth
 ```
 
 ### "No face detected"
+
 - Ensure face is clearly visible
 - Use well-lit, front-facing photos
 - Face should be at least 50x50 pixels
 
 ### "Need at least 2 students"
+
 ```bash
 # Register more students first
 # Check registered count
@@ -202,6 +215,7 @@ curl http://localhost:5000/api/students/
 ```
 
 ### Low accuracy
+
 - Add more students
 - Use better quality images
 - Retrain classifier
@@ -251,6 +265,7 @@ backend/
 ## Support
 
 For issues or questions, check:
+
 - `PIPELINE_README.md` - Detailed documentation
 - API logs - Console output from `app.py`
 - Swagger UI - Interactive API docs
