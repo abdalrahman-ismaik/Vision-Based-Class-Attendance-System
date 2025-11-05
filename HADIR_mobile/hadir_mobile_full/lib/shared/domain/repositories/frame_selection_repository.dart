@@ -49,7 +49,7 @@ class FrameSelectionRepositoryImpl implements FrameSelectionRepository {
         isHealthy: true,
         version: '1.0.0',
         capabilities: [
-          'yolov7_pose_estimation',
+          'ml_kit_face_detection',
           'face_detection',
           'quality_assessment',
           'frame_selection',
@@ -119,11 +119,11 @@ class FrameSelectionRepositoryImpl implements FrameSelectionRepository {
         selectedFrames: selectedFrames,
         totalFramesProcessed: imageFiles.length,
         processingTimeMs: 1500 + (imageFiles.length * 100),
-        algorithm: 'YOLOv7-Pose + Quality Assessment',
+        algorithm: 'ML Kit Face Detection + Quality Assessment',
         metadata: {
           'model_version': '1.0.0',
-          'pose_model': 'yolov7-w6-pose',
-          'face_detector': 'opencv_dnn',
+          'pose_model': 'ml_kit_face_detection',
+          'face_detector': 'ml_kit',
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -144,16 +144,16 @@ class FrameSelectionRepositoryImpl implements FrameSelectionRepository {
       return ServiceInfoResult(
         serviceName: 'HADIR Frame Selection Service',
         version: '1.0.0',
-        description: 'AI-powered frame selection using YOLOv7-Pose and computer vision',
+        description: 'AI-powered frame selection using ML Kit Face Detection and computer vision',
         capabilities: {
           'pose_estimation': {
-            'model': 'YOLOv7-Pose',
-            'keypoints': 17,
-            'format': 'COCO',
+            'model': 'ML Kit Face Detection',
+            'euler_angles': ['yaw', 'pitch', 'roll'],
+            'format': 'Head Euler Angles',
           },
           'face_detection': {
-            'method': 'OpenCV DNN',
-            'backup': 'MediaPipe (if available)',
+            'method': 'ML Kit',
+            'features': ['landmarks', 'contours', 'classification'],
           },
           'quality_assessment': {
             'sharpness': 'Laplacian variance',

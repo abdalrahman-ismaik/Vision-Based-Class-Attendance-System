@@ -14,14 +14,12 @@ abstract class HadirException implements Exception {
 
 /// Generic HADIR exception for general errors
 class GenericHadirException extends HadirException {
-  const GenericHadirException(String message, {String? code}) 
-      : super(message, code: code);
+  const GenericHadirException(super.message, {super.code});
 }
 
 /// Base class for authentication-related exceptions
 abstract class AuthenticationException extends HadirException {
-  const AuthenticationException(String message, {String? code}) 
-      : super(message, code: code);
+  const AuthenticationException(super.message, {super.code});
 
   @override
   String toString() => 'AuthenticationException: $message${code != null ? ' (Code: $code)' : ''}';
@@ -65,8 +63,7 @@ class AccountDisabledException extends AuthenticationException {
 
 /// Base class for registration-related exceptions
 abstract class RegistrationException extends HadirException {
-  const RegistrationException(String message, {String? code}) 
-      : super(message, code: code);
+  const RegistrationException(super.message, {super.code});
 
   @override
   String toString() => 'RegistrationException: $message${code != null ? ' (Code: $code)' : ''}';
@@ -116,8 +113,7 @@ class InvalidStudentDataException extends RegistrationException {
 
 /// Base class for pose detection related exceptions  
 abstract class PoseDetectionException extends HadirException {
-  const PoseDetectionException(String message, {String? code}) 
-      : super(message, code: code);
+  const PoseDetectionException(super.message, {super.code});
 
   @override
   String toString() => 'PoseDetectionException: $message${code != null ? ' (Code: $code)' : ''}';
@@ -125,14 +121,13 @@ abstract class PoseDetectionException extends HadirException {
 
 /// Generic pose detection exception
 class GenericPoseDetectionException extends PoseDetectionException {
-  const GenericPoseDetectionException(String message, {String? code}) 
-      : super(message, code: code);
+  const GenericPoseDetectionException(super.message, {super.code});
 }
 
-/// Exception thrown when YOLOv7-Pose model fails to initialize
+/// Exception thrown when ML Kit Face Detection model fails to initialize
 class ModelInitializationException extends PoseDetectionException {
   const ModelInitializationException([String? message]) 
-      : super(message ?? 'Failed to initialize YOLOv7-Pose model', code: 'POSE_001');
+      : super(message ?? 'Failed to initialize ML Kit Face Detection model', code: 'POSE_001');
 }
 
 /// Exception thrown when no face is detected in the frame
@@ -179,8 +174,7 @@ class PoseDetectionTimeoutException extends PoseDetectionException {
 
 /// Base class for camera-related exceptions
 abstract class CameraException extends HadirException {
-  const CameraException(String message, {String? code}) 
-      : super(message, code: code);
+  const CameraException(super.message, {super.code});
 
   @override
   String toString() => 'CameraException: $message${code != null ? ' (Code: $code)' : ''}';
@@ -212,8 +206,7 @@ class CameraNotAvailableException extends CameraException {
 
 /// Base class for validation exceptions
 abstract class ValidationException extends HadirException {
-  const ValidationException(String message, {String? code, this.field}) 
-      : super(message, code: code);
+  const ValidationException(super.message, {super.code, this.field});
 
   /// The field that failed validation
   final String? field;
@@ -254,8 +247,7 @@ class ValueTooLongException extends ValidationException {
 
 /// Base class for repository exceptions
 abstract class RepositoryException extends HadirException {
-  const RepositoryException(String message, {String? code}) 
-      : super(message, code: code);
+  const RepositoryException(super.message, {super.code});
 
   @override
   String toString() => 'RepositoryException: $message${code != null ? ' (Code: $code)' : ''}';
@@ -299,8 +291,7 @@ class RepositoryTimeoutException extends RepositoryException {
 
 /// Base class for file system exceptions
 abstract class FileSystemException extends HadirException {
-  const FileSystemException(String message, {String? code}) 
-      : super(message, code: code);
+  const FileSystemException(super.message, {super.code});
 
   @override
   String toString() => 'FileSystemException: $message${code != null ? ' (Code: $code)' : ''}';
@@ -332,8 +323,7 @@ class InsufficientStorageException extends FileSystemException {
 
 /// Base class for network exceptions
 abstract class NetworkException extends HadirException {
-  const NetworkException(String message, {String? code}) 
-      : super(message, code: code);
+  const NetworkException(super.message, {super.code});
 
   @override
   String toString() => 'NetworkException: $message${code != null ? ' (Code: $code)' : ''}';
@@ -365,8 +355,7 @@ class InvalidResponseException extends NetworkException {
 
 /// Base class for export-related exceptions
 abstract class ExportException extends HadirException {
-  const ExportException(String message, {String? code}) 
-      : super(message, code: code);
+  const ExportException(super.message, {super.code});
 
   @override
   String toString() => 'ExportException: $message${code != null ? ' (Code: $code)' : ''}';

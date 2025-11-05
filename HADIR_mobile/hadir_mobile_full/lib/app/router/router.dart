@@ -1,6 +1,7 @@
 /// Router module for the HADIR Mobile application
 /// 
 /// This file exports all routing-related classes and utilities
+library;
 
 // Route names and configuration
 export 'route_names.dart';

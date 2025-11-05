@@ -3,7 +3,7 @@
 [![Flutter Version](https://img.shields.io/badge/Flutter-3.16+-blue.svg)](https://flutter.dev/)
 [![Dart Version](https://img.shields.io/badge/Dart-3.0+-blue.svg)](https://dart.dev/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#)
+[![Build Status](https://img.shields.io/badge/Build-Active_Development-yellow.svg)](#)
 
 A comprehensive mobile application for high-accuracy facial recognition and pose detection using YOLOv7-Pose technology, built with Flutter and Clean Architecture principles.
 
@@ -15,10 +15,11 @@ HADIR is a university student identification system that leverages advanced comp
 
 - **🤖 Advanced Computer Vision**: YOLOv7-Pose integration for 5-pose facial capture
 - **🔒 Secure Authentication**: Role-based access control for administrators
-- **📱 Intuitive UI**: Guided pose capture with real-time feedback
-- **🏗️ Clean Architecture**: SOLID principles with comprehensive testing
+- **📱 Student Management**: Complete CRUD operations with search, filter, and sort
+- **🎨 Intuitive UI**: Guided pose capture with real-time feedback
+- **🏗️ Clean Architecture**: SOLID principles with Riverpod state management
 - **⚡ Real-time Processing**: Optimized pose detection with ≥90% confidence validation
-- **💾 Offline Support**: Local SQLite database with export capabilities
+- **💾 Offline Support**: Local SQLite database with comprehensive indexing
 
 ## 📋 Table of Contents
 
@@ -68,6 +69,8 @@ HADIR is a university student identification system that leverages advanced comp
    flutter run
    ```
 
+   > **⚠️ Important:** When testing Student ID validation or development mode features, use **Hot Restart** (Ctrl+Shift+F5) instead of hot reload. See [DEV_MODE_QUICK_REFERENCE.md](DEV_MODE_QUICK_REFERENCE.md) for details.
+
 ### First Run
 
 1. **Administrator Login**: Use default credentials (configured in app)
@@ -77,15 +80,33 @@ HADIR is a university student identification system that leverages advanced comp
 
 ## 📚 Documentation
 
-Our comprehensive documentation is organized for different use cases:
+Our comprehensive documentation is organized for different use cases. For a complete index, see **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)**.
+
+### Essential Reading
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| **[CHANGELOG.md](CHANGELOG.md)** | Detailed change history and release notes | All users |
+| **[DEV_MODE_QUICK_REFERENCE.md](DEV_MODE_QUICK_REFERENCE.md)** | Hot restart guide, testing checklist | Developers |
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Clean architecture design and patterns | Developers |
-| **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** | File organization and navigation guide | Developers |
 | **[DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md)** | Development processes and standards | Contributors |
 | **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** | Common issues and solutions | All users |
+| **[STUDENT_VALIDATION_RULES.md](STUDENT_VALIDATION_RULES.md)** | Validation rules and formats | Developers |
+
+### Project Management
+
+| Document | Purpose |
+|----------|---------|
+| **[CHANGELOG.md](CHANGELOG.md)** | Detailed change history and release notes |
+| **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** | File organization and navigation guide |
+| **[PROJECT_CLEANUP_REPORT.md](PROJECT_CLEANUP_REPORT.md)** | Project audit and status report |
+
+### Planning & Design
+
+| Document | Purpose |
+|----------|---------|
+| **[srs_document.md](srs_document.md)** | Software Requirements Specification |
+| **[system_design.md](system_design.md)** | System architecture and design |
+| **[project_plan.md](project_plan.md)** | Research project timeline |
 
 ### Quick Reference
 

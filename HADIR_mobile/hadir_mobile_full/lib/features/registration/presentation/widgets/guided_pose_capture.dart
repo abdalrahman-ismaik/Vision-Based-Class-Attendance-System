@@ -1,8 +1,23 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:camera/camera.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:image/image.dart' as img;
 import 'package:hadir_mobile_full/shared/domain/entities/selected_frame.dart';
+import 'package:hadir_mobile_full/shared/domain/entities/captured_frame.dart';
+import 'package:hadir_mobile_full/core/computer_vision/pose_type.dart';
+import 'package:hadir_mobile_full/core/computer_vision/pose_angles.dart';
+import 'package:hadir_mobile_full/core/computer_vision/face_metrics.dart';
+import 'package:hadir_mobile_full/core/computer_vision/bounding_box.dart';
+import 'package:hadir_mobile_full/app/theme/app_colors.dart';
+import 'package:hadir_mobile_full/app/theme/app_spacing.dart';
+import 'package:hadir_mobile_full/app/theme/app_text_styles.dart';
 
-/// Guided pose capture widget for YOLOv7-Pose based face registration
+/// Guided pose capture widget with MANUAL administrator validation
+/// No ML Kit - administrator validates pose visually and triggers capture
+/// Now captures individual images instead of video for better quality selection
 class GuidedPoseCapture extends ConsumerStatefulWidget {
   const GuidedPoseCapture({
     super.key,
@@ -10,23 +25,46 @@ class GuidedPoseCapture extends ConsumerStatefulWidget {
     required this.onFrameCaptured,
     required this.onComplete,
     required this.onError,
+    this.onAllFramesCaptured,
+    this.onPoseChanged,
+    this.embedded = false,
   });
 
   final String sessionId;
-  final Function(SelectedFrame frame) onFrameCaptured;
+  final Function(SelectedFrame frame) onFrameCaptured;  // Legacy - for backward compatibility
   final Function() onComplete;
   final Function(String error) onError;
+  final Function(List<CapturedFrame> frames)? onAllFramesCaptured;  // NEW - returns all captured frames
+  final Function(int poseIndex, PoseType poseType, String instruction)? onPoseChanged;  // NEW - notifies pose changes
+  final bool embedded;
 
   @override
   ConsumerState<GuidedPoseCapture> createState() => _GuidedPoseCaptureState();
 }
 
 class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
+  // Camera controller
+  CameraController? _cameraController;
   
   // Current pose being captured
   int _currentPoseIndex = 0;
-  final List<PoseType> _requiredPoses = PoseType.values;
+  final List<PoseType> _requiredPoses = [
+    PoseType.frontal,
+    PoseType.leftProfile,
+    PoseType.rightProfile,
+    PoseType.lookingUp,
+    PoseType.lookingDown,
+  ];
+  
+  // Store captured frames for each pose (will be used for selection)
+  final List<CapturedFrame> _allCapturedFrames = [];
+  
+  // Image stream capture state
+  bool _isStreamCapturing = false;
+  List<CameraImage> _capturedImages = [];
+  Timer? _streamCaptureTimer;
   
   // Animation controllers
   late AnimationController _pulseController;
@@ -36,12 +74,17 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
   bool _isCapturing = false;
   bool _isCameraReady = false;
   String? _currentInstruction;
+  bool _isFrontCamera = true;
+  int _captureProgress = 0; // 0-15 for capturing 15 frames
+  bool _allPosesComplete = false; // Track when all 5 poses are captured
+  bool _isProcessingFrames = false; // Track when frame selection is processing
   
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeAnimations();
-    _updateInstruction();
+    _updateInstruction(useSetState: false); // Don't use setState during init
     _initializeCamera();
   }
 
@@ -58,33 +101,688 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
     _pulseController.repeat(reverse: true);
   }
 
-  void _updateInstruction() {
+  void _updateInstruction({bool useSetState = true}) {
     if (_currentPoseIndex < _requiredPoses.length) {
-      setState(() {
-        _currentInstruction = _requiredPoses[_currentPoseIndex].instruction;
-      });
+      final poseType = _requiredPoses[_currentPoseIndex];
+      final instruction = _getPoseInstruction(poseType);
+      
+      if (useSetState && mounted) {
+        setState(() {
+          _currentInstruction = instruction;
+        });
+      } else {
+        _currentInstruction = instruction;
+      }
+      
+      // Notify parent about pose change
+      widget.onPoseChanged?.call(_currentPoseIndex, poseType, instruction);
+    }
+  }
+  
+  String _getPoseInstruction(PoseType poseType) {
+    switch (poseType) {
+      case PoseType.frontal:
+        return 'Look straight at camera - keep head upright';
+      case PoseType.leftProfile:
+        return 'Turn left - keep head upright';
+      case PoseType.rightProfile:
+        return 'Turn right - keep head upright';
+      case PoseType.lookingUp:
+        return 'Tilt up slightly - keep head upright';
+      case PoseType.lookingDown:
+        return 'Tilt down slightly - keep head upright';
     }
   }
 
+  /// Initialize camera using official Flutter camera package guidelines
+  /// Reference: https://pub.dev/packages/camera
   Future<void> _initializeCamera() async {
-    // Simulate camera initialization
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Get available cameras
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        widget.onError('No cameras found');
+        return;
+      }
+      
+      // Select front camera for face detection (or first available camera)
+      final camera = cameras.firstWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.front,
+        orElse: () => cameras.first,
+      );
+      
+      _isFrontCamera = camera.lensDirection == CameraLensDirection.front;
+      
+      // Cache sensor orientation for image conversion
+      
+      // Initialize camera controller with high resolution for better face detection
+      // Following official camera package documentation
+      _cameraController = CameraController(
+        camera,
+        ResolutionPreset.high,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.yuv420,
+      );
+      
+      // Wait for camera to initialize before using
+      await _cameraController!.initialize();
+      
+      // Debug: Log camera information
+      // Note: previewSize is in landscape orientation (width > height)
+      final cameraAspectRatio = _cameraController!.value.aspectRatio;
+      final previewSize = _cameraController!.value.previewSize;
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('📷 CAMERA INITIALIZED');
+      debugPrint('   Aspect Ratio: $cameraAspectRatio');
+      debugPrint('   Preview Size: $previewSize');
+      debugPrint('   Front Camera: $_isFrontCamera');
+      debugPrint('   Embedded Mode: ${widget.embedded}');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      // Manual mode: No image stream needed
+      
+      if (mounted) {
+        setState(() {
+          _isCameraReady = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        widget.onError('Failed to initialize camera: $e');
+      }
+    }
+  }
+
+  /// Manual capture - administrator clicks button after validating pose
+  /// Uses image stream for true 30 FPS capture without autofocus delays
+  Future<void> _captureFrame() async {
+    if (_isCapturing || !_isCameraReady || _cameraController == null) return;
     
+    setState(() {
+      _isCapturing = true;
+      _isStreamCapturing = true;
+      _captureProgress = 0;
+      _capturedImages = [];
+    });
+
+    try {
+      const framesPerPose = 15; // Capture 15 frames at true 30 FPS = 0.5 seconds
+      final captureStartTime = DateTime.now();
+      
+      debugPrint('🎬 Starting image stream capture for ${_getPoseDisplayName(_requiredPoses[_currentPoseIndex])}');
+      
+      // Start image stream
+      await _cameraController!.startImageStream((CameraImage image) {
+        if (!_isStreamCapturing) return;
+        
+        // Capture every frame (30 FPS)
+        if (_capturedImages.length < framesPerPose) {
+          _capturedImages.add(image);
+          
+          if (mounted) {
+            setState(() {
+              _captureProgress = _capturedImages.length;
+            });
+          }
+          
+          debugPrint('📸 Frame ${_capturedImages.length}/$framesPerPose captured');
+          
+          // Stop when we have enough frames
+          if (_capturedImages.length >= framesPerPose) {
+            _isStreamCapturing = false;
+          }
+        }
+      });
+      
+      // Wait for all frames to be captured (should take ~1 second at 30 FPS)
+      while (_capturedImages.length < framesPerPose && mounted) {
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+      
+      // Stop image stream
+      try {
+        await _cameraController!.stopImageStream();
+      } catch (e) {
+        debugPrint('⚠️ Error stopping image stream: $e');
+      }
+      
+      final totalCaptureTime = DateTime.now().difference(captureStartTime).inMilliseconds;
+      debugPrint('⏱️ Captured ${_capturedImages.length} frames in ${totalCaptureTime}ms');
+      debugPrint('� Average: ${(totalCaptureTime / _capturedImages.length).toStringAsFixed(1)}ms per frame');
+      debugPrint('🎯 Actual FPS: ${(_capturedImages.length / (totalCaptureTime / 1000)).toStringAsFixed(1)}');
+      
+      // Convert CameraImage to files and create CapturedFrame objects
+      final List<CapturedFrame> poseFrames = [];
+      debugPrint('🔄 Converting ${_capturedImages.length} images to files...');
+      
+      for (int i = 0; i < _capturedImages.length; i++) {
+        final cameraImage = _capturedImages[i];
+        
+        try {
+          // Convert YUV to RGB
+          final rgbImage = _convertYUV420ToImage(cameraImage);
+          
+          // Save to temporary file
+          final directory = await getTemporaryDirectory();
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final filePath = '${directory.path}/captured_${timestamp}_$i.jpg';
+          final file = File(filePath);
+          
+          // Encode and save as JPEG
+          final jpegBytes = img.encodeJpg(rgbImage, quality: 85);
+          await file.writeAsBytes(jpegBytes);
+          
+          // Create captured frame
+          final capturedFrame = CapturedFrame(
+            id: 'captured_${timestamp}_$i',
+            sessionId: widget.sessionId,
+            imageFilePath: filePath,
+            timestampMs: timestamp + i, // Add index to ensure unique timestamps
+            qualityScore: 0.0, // Will be calculated during selection
+            poseAngles: PoseAngles(
+              yaw: 0.0,
+              pitch: 0.0,
+              roll: 0.0,
+              confidence: 1.0,
+            ),
+            faceMetrics: FaceMetrics(
+              boundingBox: BoundingBox(x: 0, y: 0, width: 0, height: 0),
+              faceSize: 0.5,
+              sharpnessScore: 0.0,
+              lightingScore: 0.0,
+              symmetryScore: 0.9,
+              hasGlasses: false,
+              hasHat: false,
+              isSmiling: false,
+            ),
+            capturedAt: DateTime.now(),
+            poseType: _requiredPoses[_currentPoseIndex],
+            confidenceScore: 1.0,
+          );
+          
+          poseFrames.add(capturedFrame);
+          
+          // Quality analysis will happen AFTER all frames captured (deferred to background)
+          
+        } catch (e) {
+          debugPrint('⚠️ Error converting frame $i: $e');
+        }
+      }
+      
+      debugPrint('✅ Converted ${poseFrames.length} frames to files');
+      
+      // Store all captured frames
+      _allCapturedFrames.addAll(poseFrames);
+      
+      debugPrint('✅ Captured $framesPerPose frames for ${_getPoseDisplayName(_requiredPoses[_currentPoseIndex])}');
+      debugPrint('   Total frames captured: ${_allCapturedFrames.length}');
+      
+      // Move to next pose
+      _currentPoseIndex++;
+      
+      if (_currentPoseIndex >= _requiredPoses.length) {
+        // All poses captured - trigger selection phase
+        _handleAllPosesCaptured();
+      } else {
+        // Update instruction for next pose
+        _updateInstruction();
+        _showCaptureSuccess();
+      }
+      
+    } catch (e) {
+      widget.onError('Failed to capture images: ${e.toString()}');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCapturing = false;
+          _isStreamCapturing = false;
+          _captureProgress = 0;
+          _capturedImages = [];
+        });
+      }
+    }
+  }
+  
+  /// Convert YUV420 CameraImage to RGB Image
+  img.Image _convertYUV420ToImage(CameraImage cameraImage) {
+    final int width = cameraImage.width;
+    final int height = cameraImage.height;
+    
+    final img.Image image = img.Image(width: width, height: height);
+    
+    final Plane yPlane = cameraImage.planes[0];
+    final Plane uPlane = cameraImage.planes[1];
+    final Plane vPlane = cameraImage.planes[2];
+    
+    final int uvRowStride = uPlane.bytesPerRow;
+    final int uvPixelStride = uPlane.bytesPerPixel ?? 1;
+    
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        final int yIndex = y * yPlane.bytesPerRow + x;
+        final int uvIndex = (y ~/ 2) * uvRowStride + (x ~/ 2) * uvPixelStride;
+        
+        final int yValue = yPlane.bytes[yIndex];
+        final int uValue = uPlane.bytes[uvIndex];
+        final int vValue = vPlane.bytes[uvIndex];
+        
+        // YUV to RGB conversion
+        int r = (yValue + 1.370705 * (vValue - 128)).round().clamp(0, 255);
+        int g = (yValue - 0.337633 * (uValue - 128) - 0.698001 * (vValue - 128)).round().clamp(0, 255);
+        int b = (yValue + 1.732446 * (uValue - 128)).round().clamp(0, 255);
+        
+        image.setPixelRgba(x, y, r, g, b, 255);
+      }
+    }
+    
+    return image;
+  }
+  
+  /// Handle all poses captured - notify parent with all captured frames
+  void _handleAllPosesCaptured() async {
+    debugPrint('🎉 All poses captured! Total frames: ${_allCapturedFrames.length}');
+    
+    setState(() {
+      _allPosesComplete = true; // Disable capture button
+      _isProcessingFrames = true; // Show loading overlay
+    });
+    
+    // Notify parent with all captured frames if callback is provided
+    if (widget.onAllFramesCaptured != null) {
+      // Await the callback if it's async (which it should be for frame selection)
+      await widget.onAllFramesCaptured!(_allCapturedFrames);
+    }
+    
+    // Hide processing overlay after callback completes
     if (mounted) {
       setState(() {
-        _isCameraReady = true;
+        _isProcessingFrames = false;
       });
+    }
+    
+    // Also call completion callback
+    widget.onComplete();
+  }
+
+  void _showCaptureSuccess() {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Captured ${_getPoseDisplayName(_requiredPoses[_currentPoseIndex - 1])} successfully!',
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildEmbeddedView() {
+    return Stack(
+      children: [
+        // Main camera view - full width, no borders
+        Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: Colors.black,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Stack(
+                children: [
+                  // Camera preview - full width
+                  if (_isCameraReady)
+                    SizedBox(
+                      width: double.infinity,
+                      height: double.infinity,
+                      child: _buildCameraPreview(),
+                    )
+                  else
+                  _buildCameraLoadingView(),
+                  
+                  // Capture button - centered
+                  if (_isCameraReady && !_isCapturing)
+                    Positioned(
+                      bottom: constraints.maxHeight * 0.15,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: _buildCaptureButton(),
+                      ),
+                    ),
+                    
+                  // Capture progress indicator
+                  if (_isCapturing)
+                    Positioned(
+                      bottom: constraints.maxHeight * 0.15,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: _buildCaptureProgress(),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+        
+        // Processing overlay - shown when frame selection is running
+        if (_isProcessingFrames)
+          _buildProcessingOverlay(),
+      ],
+    );
+  }
+
+  Widget _buildCameraLoadingView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryIndigo),
+            strokeWidth: 3,
+          ),
+          SizedBox(height: AppSpacing.lg),
+          Text(
+            'Initializing Camera',
+            style: AppTextStyles.headingMedium.copyWith(
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCaptureButton() {
+    return GestureDetector(
+      onTap: _captureFrame,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: AppColors.primaryGradient,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryIndigo.withOpacity(0.4),
+              blurRadius: 24,
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.camera_alt,
+          color: Colors.white,
+          size: 36,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCaptureProgress() {
+    return Container(
+      padding: AppSpacing.paddingLG,
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.8),
+        borderRadius: AppRadius.circularXL,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 60,
+            height: 60,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircularProgressIndicator(
+                  value: _captureProgress / 15.0,
+                  strokeWidth: 4,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryIndigo),
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                ),
+                Text(
+                  '$_captureProgress',
+                  style: AppTextStyles.headingLarge.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: AppSpacing.md),
+          Text(
+            'Capturing...',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProcessingOverlay() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withOpacity(0.95),
+            Colors.black.withOpacity(0.98),
+          ],
+        ),
+        borderRadius: AppRadius.circularXL,
+      ),
+      child: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Animated processing indicator with gradient
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppColors.primaryGradient,
+                  boxShadow: AppElevation.coloredShadow(AppColors.primaryIndigo),
+                ),
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: CircularProgressIndicator(
+                  strokeWidth: 6,
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                ),
+              ),
+              SizedBox(height: AppSpacing.xl),
+              
+              // Processing title
+              Text(
+                '🎯 Processing Frames',
+                style: AppTextStyles.displaySmall.copyWith(
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: AppSpacing.md),
+              
+              // Processing description
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+                child: Text(
+                  'Analyzing ${_allCapturedFrames.length} captured frames to select the best ones for registration...',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              SizedBox(height: AppSpacing.xl),
+              
+              // Processing steps indicator with modern design
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                padding: AppSpacing.paddingLG,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primaryIndigo.withOpacity(0.2),
+                      AppColors.primaryPurple.withOpacity(0.2),
+                    ],
+                  ),
+                  borderRadius: AppRadius.circularXL,
+                  border: Border.all(
+                    color: AppColors.primaryIndigo.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    _buildProcessingStep(Icons.image_search, 'Analyzing image quality', true),
+                    SizedBox(height: AppSpacing.md),
+                    _buildProcessingStep(Icons.face, 'Detecting face poses', true),
+                    SizedBox(height: AppSpacing.md),
+                    _buildProcessingStep(Icons.stars, 'Selecting best frames', true),
+                  ],
+                ),
+              ),
+              SizedBox(height: AppSpacing.xl),
+              
+              // Estimated time with modern styling
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: AppRadius.circularMD,
+                ),
+                child: Text(
+                  'This usually takes 20-30 seconds',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: Colors.white.withOpacity(0.6),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProcessingStep(IconData icon, String label, bool isActive) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(AppSpacing.xs),
+          decoration: BoxDecoration(
+            gradient: isActive ? AppColors.successGradient : null,
+            color: isActive ? null : Colors.white.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 18,
+          ),
+        ),
+        SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: isActive ? Colors.white : Colors.white.withOpacity(0.6),
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+        if (isActive)
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.successGreen),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _getPoseDisplayName(PoseType poseType) {
+    switch (poseType) {
+      case PoseType.frontal:
+        return 'Front Face';
+      case PoseType.leftProfile:
+        return 'Left Profile';
+      case PoseType.rightProfile:
+        return 'Right Profile';
+      case PoseType.lookingUp:
+        return 'Looking Up';
+      case PoseType.lookingDown:
+        return 'Looking Down';
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      // Stop processing when app goes to background
+      // Auto-capture timer removed
+      // Processing frame flag removed
+    } else if (state == AppLifecycleState.resumed && _cameraController != null) {
+      // Manual mode: No image stream needed
     }
   }
 
   @override
   void dispose() {
+    // Remove observer first
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // Cancel stream capture timer
+    _streamCaptureTimer?.cancel();
+    _isStreamCapturing = false;
+    
+    // Dispose animations
     _pulseController.dispose();
+    
+    // Stop camera processing safely (fire and forget - can't await in dispose)
+    _cameraController?.stopImageStream().catchError((e) {
+      debugPrint('Error stopping image stream: $e');
+    });
+    
+    _cameraController?.dispose().catchError((e) {
+      debugPrint('Error disposing camera: $e');
+    });
+    
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return _buildEmbeddedView();
+    }
+    
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -118,25 +816,21 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
                 color: Colors.grey[900],
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _isCapturing ? Colors.green : Colors.grey[700]!,
+                  color: _isCapturing ? Colors.blue : Colors.green[700]!,
                   width: 3,
                 ),
               ),
-              child: Stack(
-                children: [
-                  // Camera preview placeholder
-                  Center(
-                    child: _isCameraReady
-                        ? _buildCameraPreview()
-                        : const CircularProgressIndicator(),
-                  ),
-                  
-                  // Face detection overlay
-                  if (_isCameraReady) _buildFaceOverlay(),
-                  
-                  // Pose guide overlay
-                  if (_isCameraReady) _buildPoseGuide(),
-                ],
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  children: [
+                    Center(
+                      child: _isCameraReady
+                          ? _buildCameraPreview()
+                          : const CircularProgressIndicator(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -148,9 +842,10 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Current instruction
                   Text(
-                    _currentInstruction ?? 'Preparing camera...',
+                    _isCapturing 
+                      ? 'Capturing...'
+                      : _currentInstruction ?? 'Preparing camera...',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -160,7 +855,6 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
                   ),
                   const SizedBox(height: 16),
                   
-                  // Pose type indicator
                   if (_currentPoseIndex < _requiredPoses.length)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -169,10 +863,10 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
                       ),
                       decoration: BoxDecoration(
                         color: Colors.blue[900],
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        _requiredPoses[_currentPoseIndex].toString(),
+                        _getPoseDisplayName(_requiredPoses[_currentPoseIndex]),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w500,
@@ -182,24 +876,60 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
                   
                   const Spacer(),
                   
-                  // Capture button
+                  // Capture button with progress indicator
                   AnimatedBuilder(
                     animation: _pulseAnimation,
                     builder: (context, child) {
                       return Transform.scale(
                         scale: _isCapturing ? 1.0 : _pulseAnimation.value,
-                        child: FloatingActionButton.large(
-                          onPressed: _isCameraReady && !_isCapturing
-                              ? _captureFrame
-                              : null,
-                          backgroundColor: _isCapturing
-                              ? Colors.red
-                              : Colors.white,
-                          child: Icon(
-                            _isCapturing ? Icons.stop : Icons.camera_alt,
-                            color: _isCapturing ? Colors.white : Colors.black,
-                            size: 32,
-                          ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Progress ring during capture
+                            if (_isCapturing)
+                              SizedBox(
+                                width: 80,
+                                height: 80,
+                                child: CircularProgressIndicator(
+                                  value: _captureProgress / 15.0, // Updated to 15 frames
+                                  strokeWidth: 4,
+                                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                  backgroundColor: Colors.white.withAlpha(77),
+                                ),
+                              ),
+                            
+                            // Capture button
+                            FloatingActionButton.large(
+                              onPressed: _isCameraReady && !_isCapturing && !_allPosesComplete
+                                  ? _captureFrame
+                                  : null,
+                              backgroundColor: _allPosesComplete
+                                  ? Colors.grey
+                                  : _isCapturing
+                                      ? Colors.orange
+                                      : Colors.green,
+                              child: _allPosesComplete
+                                  ? const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 32,
+                                    )
+                                  : _isCapturing
+                                      ? Text(
+                                          '$_captureProgress',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.camera_alt,
+                                          color: Colors.white,
+                                          size: 32,
+                                        ),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -213,236 +943,41 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
     );
   }
 
+  /// Build camera preview with correct aspect ratio
+  /// Following official Flutter camera package guidelines
+  /// Reference: https://pub.dev/packages/camera
   Widget _buildCameraPreview() {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(13),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.grey[800]!,
-            Colors.grey[900]!,
-          ],
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.black,
+        child: const Center(
+          child: CircularProgressIndicator(),
         ),
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.videocam,
-              size: 64,
-              color: Colors.white54,
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Camera Preview',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFaceOverlay() {
-    return CustomPaint(
-      size: Size.infinite,
-      painter: FaceDetectionOverlayPainter(),
-    );
-  }
-
-  Widget _buildPoseGuide() {
-    return Positioned(
-      top: 20,
-      right: 20,
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          color: Colors.black54,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          _getPoseIcon(_requiredPoses[_currentPoseIndex]),
-          color: Colors.white,
-          size: 32,
-        ),
-      ),
-    );
-  }
-
-  IconData _getPoseIcon(PoseType poseType) {
-    switch (poseType) {
-      case PoseType.frontal:
-        return Icons.face;
-      case PoseType.leftProfile:
-        return Icons.face_3;
-      case PoseType.rightProfile:
-        return Icons.face_4;
-      case PoseType.lookingUp:
-        return Icons.keyboard_arrow_up;
-      case PoseType.lookingDown:
-        return Icons.keyboard_arrow_down;
-    }
-  }
-
-  Future<void> _captureFrame() async {
-    if (_isCapturing || !_isCameraReady) return;
-    
-    setState(() {
-      _isCapturing = true;
-    });
-
-    try {
-      // Simulate frame capture and processing
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // Simulate successful capture
-      final now = DateTime.now();
-      final mockFrame = SelectedFrame(
-        id: 'FRM${now.millisecondsSinceEpoch.toString().padLeft(8, '0')}',
-        registrationSessionId: widget.sessionId,
-        imagePath: 'frames/mock_frame_${now.millisecondsSinceEpoch}.jpg',
-        poseType: _requiredPoses[_currentPoseIndex],
-        confidenceScore: 0.95,
-        quality: FrameQuality.excellent,
-        faceEmbedding: List.generate(512, (i) => (i * 0.001) - 0.256),
-        faceBoundingBox: [100.0, 150.0, 200.0, 250.0],
-        keyPoints: List.generate(68, (i) => [100.0 + i * 2.0, 200.0 + i * 1.5]),
-        capturedAt: now,
-        createdAt: now,
-        updatedAt: now,
       );
-
-      // Notify parent of successful capture
-      widget.onFrameCaptured(mockFrame);
-      
-      // Move to next pose or complete
-      _currentPoseIndex++;
-      
-      if (_currentPoseIndex >= _requiredPoses.length) {
-        // All poses captured
-        widget.onComplete();
-      } else {
-        // Update instruction for next pose
-        _updateInstruction();
-        
-        // Show success feedback
-        _showCaptureSuccess();
-      }
-      
-    } catch (e) {
-      widget.onError('Failed to capture frame: ${e.toString()}');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCapturing = false;
-        });
-      }
     }
-  }
 
-  void _showCaptureSuccess() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Captured ${_requiredPoses[_currentPoseIndex - 1]} pose successfully!',
-        ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 1),
+    final camera = _cameraController!;
+    
+    // Get the camera preview size and aspect ratio
+    // Important: previewSize is always in landscape orientation (width > height)
+    // For example: Size(1920, 1080) even when phone is in portrait
+    final size = camera.value.previewSize!;
+    
+    // Calculate the correct aspect ratio for portrait display
+    // Since camera preview is landscape but we display in portrait,
+    // we need to swap width and height to get the correct ratio
+    // Example: 1920x1080 landscape -> 1080/1920 = 0.5625 for portrait
+    final aspectRatio = size.height / size.width;
+    
+    // Wrap CameraPreview in AspectRatio widget to maintain correct proportions
+    // This prevents stretching or distortion of the camera feed
+    return Center(
+      child: AspectRatio(
+        aspectRatio: aspectRatio,
+        child: CameraPreview(camera),
       ),
     );
   }
-}
-
-/// Custom painter for face detection overlay
-class FaceDetectionOverlayPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.green.withOpacity(0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    // Draw face detection rectangle (simulated)
-    final center = Offset(size.width / 2, size.height / 2);
-    final faceRect = Rect.fromCenter(
-      center: center,
-      width: size.width * 0.6,
-      height: size.height * 0.6,
-    );
-
-    // Draw rounded rectangle for face area
-    final rrect = RRect.fromRectAndRadius(
-      faceRect,
-      const Radius.circular(8),
-    );
-    
-    canvas.drawRRect(rrect, paint);
-
-    // Draw corner indicators
-    final cornerLength = 20.0;
-    final cornerPaint = Paint()
-      ..color = Colors.green
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
-
-    // Top-left corner
-    canvas.drawLine(
-      Offset(faceRect.left, faceRect.top + cornerLength),
-      Offset(faceRect.left, faceRect.top),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(faceRect.left, faceRect.top),
-      Offset(faceRect.left + cornerLength, faceRect.top),
-      cornerPaint,
-    );
-
-    // Top-right corner
-    canvas.drawLine(
-      Offset(faceRect.right - cornerLength, faceRect.top),
-      Offset(faceRect.right, faceRect.top),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(faceRect.right, faceRect.top),
-      Offset(faceRect.right, faceRect.top + cornerLength),
-      cornerPaint,
-    );
-
-    // Bottom-left corner
-    canvas.drawLine(
-      Offset(faceRect.left, faceRect.bottom - cornerLength),
-      Offset(faceRect.left, faceRect.bottom),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(faceRect.left, faceRect.bottom),
-      Offset(faceRect.left + cornerLength, faceRect.bottom),
-      cornerPaint,
-    );
-
-    // Bottom-right corner
-    canvas.drawLine(
-      Offset(faceRect.right - cornerLength, faceRect.bottom),
-      Offset(faceRect.right, faceRect.bottom),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(faceRect.right, faceRect.bottom),
-      Offset(faceRect.right, faceRect.bottom - cornerLength),
-      cornerPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

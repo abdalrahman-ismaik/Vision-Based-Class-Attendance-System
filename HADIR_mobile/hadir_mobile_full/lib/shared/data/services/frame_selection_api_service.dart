@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:http/http.dart' as http;
 import '../../../core/utils/app_config.dart';
 import '../../../core/utils/app_logger.dart';
 
 /// API service for communicating with the HADIR Frame Selection Service
 /// 
 /// This service handles all communication with the Python microservice
-/// that provides YOLOv7-Pose powered frame selection capabilities.
+/// that provides ML Kit Face Detection powered frame selection capabilities.
 class FrameSelectionApiService {
   late final Dio _dio;
   

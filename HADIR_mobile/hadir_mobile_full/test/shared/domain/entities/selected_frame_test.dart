@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hadir_mobile_full/shared/domain/entities/selected_frame.dart';
+import 'package:hadir_mobile_full/core/computer_vision/pose_angles.dart';
+import 'package:hadir_mobile_full/core/computer_vision/bounding_box.dart';
+import 'package:hadir_mobile_full/core/computer_vision/face_metrics.dart';
 
 void main() {
   group('SelectedFrame Entity', () {
@@ -288,7 +291,7 @@ void main() {
             );
             
             final frame = SelectedFrame(
-              id: 'frame-pose-${yaw}_${pitch}_${roll}',
+              id: 'frame-pose-${yaw}_${pitch}_$roll',
               sessionId: 'session-pose',
               imageFilePath: '/storage/pose-test.jpg',
               timestampMs: 4000,

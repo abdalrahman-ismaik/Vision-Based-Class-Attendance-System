@@ -7,47 +7,47 @@ import 'package:hadir_mobile_full/shared/domain/exceptions/hadir_exceptions.dart
 /// Exception thrown when attempting to create a registration session for a student
 /// who already has an active session
 class DuplicateSessionException extends HadirException {
-  const DuplicateSessionException(String message) : super(message);
+  const DuplicateSessionException(super.message);
 }
 
 /// Exception thrown when registration session state is invalid for the requested operation
 class InvalidSessionStateException extends HadirException {
-  const InvalidSessionStateException(String message) : super(message);
+  const InvalidSessionStateException(super.message);
 }
 
 /// Exception thrown when registration session is incomplete and cannot be processed
 class IncompleteSessionException extends HadirException {
-  const IncompleteSessionException(String message) : super(message);
+  const IncompleteSessionException(super.message);
 }
 
 /// Exception thrown when captured frame quality is below acceptable threshold
 class LowQualityFrameException extends HadirException {
-  const LowQualityFrameException(String message) : super(message);
+  const LowQualityFrameException(super.message);
 }
 
 /// Exception thrown when pose angle detection fails or is incorrect
 class IncorrectPoseAngleException extends HadirException {
-  const IncorrectPoseAngleException(String message) : super(message);
+  const IncorrectPoseAngleException(super.message);
 }
 
 /// Exception thrown when quality threshold validation fails
 class QualityThresholdException extends HadirException {
-  const QualityThresholdException(String message) : super(message);
+  const QualityThresholdException(super.message);
 }
 
 /// Exception thrown when concurrent operations conflict during registration
 class ConcurrencyException extends HadirException {
-  const ConcurrencyException(String message) : super(message);
+  const ConcurrencyException(super.message);
 }
 
 /// Exception thrown when memory is insufficient for registration processing
 class MemoryException extends HadirException {
-  const MemoryException(String message) : super(message);
+  const MemoryException(super.message);
 }
 
-/// Exception thrown when YOLOv7-Pose detection processing times out
+/// Exception thrown when ML Kit face detection processing times out
 class ProcessingTimeoutException extends HadirException {
-  const ProcessingTimeoutException(String message) : super(message);
+  const ProcessingTimeoutException(super.message);
 }
 
 /// Pose target enumeration for registration workflow

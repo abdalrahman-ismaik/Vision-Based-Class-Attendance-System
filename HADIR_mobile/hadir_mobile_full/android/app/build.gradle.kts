@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "edu.university.hadir.hadir_mobile_full"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36  // Required by camera_android and other plugins
     // ndkVersion = flutter.ndkVersion // Commented out to fix NDK build issue
 
     compileOptions {

@@ -2,6 +2,7 @@
 /// 
 /// This file exports all utility classes and functions for easy importing
 /// throughout the application.
+library;
 
 // App Configuration
 export 'app_config.dart';

@@ -181,7 +181,9 @@ void main() {
         );
         
         when(mockRegistrationProvider.state).thenReturn(RegistrationState.sessionStarted(sessionInProgress));
-        when(mockRegistrationProvider.cancelCurrentSession()).thenAnswer((_) async {});
+        when(mockRegistrationProvider.cancelCurrentSession()).thenAnswer((_) async {
+          return null;
+        });
         
         // Act
         await tester.pumpWidget(createRegistrationScreen());
@@ -327,7 +329,9 @@ void main() {
       testWidgets('should start registration session with valid data', (WidgetTester tester) async {
         // Arrange
         when(mockRegistrationProvider.state).thenReturn(const RegistrationState.initial());
-        when(mockRegistrationProvider.startRegistrationSession(any)).thenAnswer((_) async {});
+        when(mockRegistrationProvider.startRegistrationSession(any)).thenAnswer((_) async {
+          return null;
+        });
         
         // Act
         await tester.pumpWidget(createRegistrationScreen());
@@ -840,7 +844,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           MediaQuery(
-            data: const MediaQueryData(textScaleFactor: 2.0),
+            data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
             child: createRegistrationScreen(),
           ),
         );

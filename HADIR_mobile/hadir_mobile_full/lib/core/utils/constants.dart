@@ -1,5 +1,5 @@
 /// Global constants for the HADIR Mobile application
-library constants;
+library;
 
 /// API Configuration
 class ApiConstants {

@@ -2,6 +2,7 @@
 /// 
 /// This file exports all shared domain models, repositories, and services
 /// that can be used across different features of the application.
+library;
 
 // Domain Models
 export 'domain/models/frame_selection_models.dart';

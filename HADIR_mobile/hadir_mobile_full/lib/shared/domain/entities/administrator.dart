@@ -1,58 +1,40 @@
 import 'package:equatable/equatable.dart';
 
-/// Enumeration for administrator roles
-enum AdminRole {
-  superAdmin,
+/// Enumeration for administrator roles used by tests
+enum AdministratorRole {
+  operator,
+  supervisor,
   admin,
-  moderator;
+}
 
-  @override
-  String toString() {
-    switch (this) {
-      case AdminRole.superAdmin:
-        return 'Super Admin';
-      case AdminRole.admin:
-        return 'Admin';  
-      case AdminRole.moderator:
-        return 'Moderator';
-    }
-  }
-
-  /// Get role description
-  String get description {
-    switch (this) {
-      case AdminRole.superAdmin:
-        return 'Full system access and management';
-      case AdminRole.admin:
-        return 'System administration and user management';
-      case AdminRole.moderator:
-        return 'Limited administrative access';
-    }
-  }
-
-  /// Get permissions for this role
+extension AdministratorRoleX on AdministratorRole {
   List<Permission> get permissions {
     switch (this) {
-      case AdminRole.superAdmin:
+      case AdministratorRole.operator:
+        return [
+          Permission.viewStudents,
+          Permission.editStudents,
+        ];
+      case AdministratorRole.supervisor:
+        return [
+          Permission.viewStudents,
+          Permission.editStudents,
+          Permission.viewRegistrations,
+          Permission.viewReports,
+        ];
+      case AdministratorRole.admin:
         return Permission.values;
-      case AdminRole.admin:
-        return [
-          Permission.viewStudents,
-          Permission.editStudents,
-          Permission.deleteStudents,
-          Permission.exportData,
-          Permission.viewRegistrations,
-          Permission.manageRegistrations,
-          Permission.viewReports,
-          Permission.manageSystem,
-        ];
-      case AdminRole.moderator:
-        return [
-          Permission.viewStudents,
-          Permission.editStudents,
-          Permission.viewRegistrations,
-          Permission.viewReports,
-        ];
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case AdministratorRole.operator:
+        return 'Operator with limited admin privileges';
+      case AdministratorRole.supervisor:
+        return 'Supervisor with elevated privileges';
+      case AdministratorRole.admin:
+        return 'Full system administrator';
     }
   }
 }
@@ -122,8 +104,7 @@ class Administrator extends Equatable {
     required this.id,
     required this.username,
     required this.email,
-    required this.firstName,
-    required this.lastName,
+    required this.fullName,
     required this.role,
     required this.status,
     this.lastLoginAt,
@@ -145,14 +126,11 @@ class Administrator extends Equatable {
   /// Administrator's email address
   final String email;
 
-  /// Administrator's first name
-  final String firstName;
-
-  /// Administrator's last name
-  final String lastName;
+  /// Administrator's full name
+  final String fullName;
 
   /// Administrator's role determining permissions
-  final AdminRole role;
+  final AdministratorRole role;
 
   /// Current status of the administrator account
   final AdminStatus status;
@@ -181,11 +159,11 @@ class Administrator extends Equatable {
   /// When the administrator record was last updated
   final DateTime updatedAt;
 
-  /// Get administrator's full name
-  String get fullName => '$firstName $lastName';
-
   /// Get list of permissions for this administrator
   List<Permission> get permissions => role.permissions;
+
+  /// Get administrator's display name
+  String get displayName => fullName;
 
   /// Check if administrator has a specific permission
   bool hasPermission(Permission permission) {
@@ -240,9 +218,8 @@ class Administrator extends Equatable {
     String? id,
     String? username,
     String? email,
-    String? firstName,
-    String? lastName,
-    AdminRole? role,
+    String? fullName,
+    AdministratorRole? role,
     AdminStatus? status,
     DateTime? lastLoginAt,
     DateTime? passwordChangedAt,
@@ -257,8 +234,7 @@ class Administrator extends Equatable {
       id: id ?? this.id,
       username: username ?? this.username,
       email: email ?? this.email,
-      firstName: firstName ?? this.firstName,
-      lastName: lastName ?? this.lastName,
+      fullName: fullName ?? this.fullName,
       role: role ?? this.role,
       status: status ?? this.status,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
@@ -330,8 +306,7 @@ class Administrator extends Equatable {
       'id': id,
       'username': username,
       'email': email,
-      'firstName': firstName,
-      'lastName': lastName,
+      'fullName': fullName,
       'role': role.name,
       'status': status.name,
       'lastLoginAt': lastLoginAt?.toIso8601String(),
@@ -351,9 +326,8 @@ class Administrator extends Equatable {
       id: json['id'] as String,
       username: json['username'] as String,
       email: json['email'] as String,
-      firstName: json['firstName'] as String,
-      lastName: json['lastName'] as String,
-      role: AdminRole.values.firstWhere((e) => e.name == json['role']),
+      fullName: json['fullName'] as String,
+      role: AdministratorRole.values.firstWhere((e) => e.name == json['role']),
       status: AdminStatus.values.firstWhere((e) => e.name == json['status']),
       lastLoginAt: json['lastLoginAt'] != null 
           ? DateTime.parse(json['lastLoginAt'] as String) 
@@ -377,8 +351,7 @@ class Administrator extends Equatable {
     required String id,
     required String username,
     required String email,
-    required String firstName,
-    required String lastName,
+    required String fullName,
   }) {
     // Validate ID format (ADM followed by 8 digits)
     if (!RegExp(r'^ADM\d{8}$').hasMatch(id)) {
@@ -396,11 +369,8 @@ class Administrator extends Equatable {
     }
 
     // Validate names
-    if (firstName.trim().isEmpty) {
-      throw ArgumentError('First name cannot be empty');
-    }
-    if (lastName.trim().isEmpty) {
-      throw ArgumentError('Last name cannot be empty');
+    if (fullName.trim().isEmpty) {
+      throw ArgumentError('Full name cannot be empty');
     }
   }
 
@@ -409,8 +379,7 @@ class Administrator extends Equatable {
     id,
     username,
     email,
-    firstName,
-    lastName,
+    fullName,
     role,
     status,
     lastLoginAt,

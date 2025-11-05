@@ -935,6 +935,7 @@ void main() {
             .thenAnswer((_) async {
           // Simulate processing time for large cleanup operation
           await Future.delayed(const Duration(milliseconds: 100));
+          return null;
         });
         
         // Act

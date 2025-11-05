@@ -2,6 +2,7 @@
 /// 
 /// These models represent the core data structures used throughout
 /// the application for frame selection operations.
+library;
 
 /// Service health check result
 class ServiceHealthResult {

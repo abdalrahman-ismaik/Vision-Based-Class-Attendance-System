@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:equatable/equatable.dart';
 
 /// Enumeration for student academic levels
@@ -67,55 +68,71 @@ enum StudentStatus {
 class Student extends Equatable {
   const Student({
     required this.id,
-    required this.firstName,
-    required this.lastName,
+    required this.studentId,
+    required this.fullName,
     required this.email,
-    required this.phoneNumber,
     required this.dateOfBirth,
-    required this.gender,
-    required this.nationality,
-    required this.major,
-    required this.enrollmentYear,
-    required this.academicLevel,
+    required this.department,
+    required this.program,
     required this.status,
+    required this.createdAt,
+    this.firstName,
+    this.lastName,
+    this.phoneNumber,
+    this.gender,
+    this.nationality,
+    this.major,
+    this.enrollmentYear,
+    this.academicLevel,
     this.registrationSessionId,
     this.faceEmbeddings = const [],
-    required this.createdAt,
-    required this.updatedAt,
+    this.lastUpdatedAt,
   });
 
   /// Unique identifier for the student
   final String id;
 
-  /// Student's first name
-  final String firstName;
+  /// Student ID (university identifier)
+  final String studentId;
 
-  /// Student's last name
-  final String lastName;
+  /// Student's full name
+  final String fullName;
+
+  /// Student's department
+  final String department;
+
+  /// Student's program
+  final String program;
+
+  /// Student's first name (optional)
+  final String? firstName;
+
+  /// Student's last name (optional)
+  final String? lastName;
 
   /// Student's email address
   final String email;
 
-  /// Student's phone number
-  final String phoneNumber;
+  /// Student's phone number (optional)
+  final String? phoneNumber;
 
   /// Student's date of birth
   final DateTime dateOfBirth;
 
-  /// Student's gender
-  final Gender gender;
+  /// Student's gender (optional)
+  final Gender? gender;
 
-  /// Student's nationality
-  final String nationality;
+  /// Student's nationality (optional)
+  final String? nationality;
 
-  /// Student's major/field of study
-  final String major;
+  /// Student's major/field of study (optional)
+  final String? major;
 
-  /// Year of enrollment
-  final int enrollmentYear;
+  /// Year of enrollment (optional)
+  final int? enrollmentYear;
 
-  /// Academic level (undergraduate, graduate, etc.)
-  final AcademicLevel academicLevel;
+  /// Academic level (undergraduate, graduate, etc.) (optional)
+  final AcademicLevel? academicLevel;
 
   /// Current registration status
   final StudentStatus status;
@@ -123,17 +140,14 @@ class Student extends Equatable {
   /// ID of the registration session used to register this student
   final String? registrationSessionId;
 
-  /// Face embeddings generated from YOLOv7-Pose for face recognition
+  /// Face embeddings generated from ML Kit Face Detection for face recognition
   final List<List<double>> faceEmbeddings;
 
   /// When the student record was created
   final DateTime createdAt;
 
-  /// When the student record was last updated
-  final DateTime updatedAt;
-
-  /// Get student's full name
-  String get fullName => '$firstName $lastName';
+  /// When the student record was last updated (optional)
+  final DateTime? lastUpdatedAt;
 
   /// Get student's age based on date of birth
   int get age {
@@ -160,6 +174,8 @@ class Student extends Equatable {
   /// Create a copy of this student with updated fields
   Student copyWith({
     String? id,
+    String? studentId,
+    String? fullName,
     String? firstName,
     String? lastName,
     String? email,
@@ -174,10 +190,14 @@ class Student extends Equatable {
     String? registrationSessionId,
     List<List<double>>? faceEmbeddings,
     DateTime? createdAt,
-    DateTime? updatedAt,
+    DateTime? lastUpdatedAt,
+    String? department,
+    String? program,
   }) {
     return Student(
       id: id ?? this.id,
+      studentId: studentId ?? this.studentId,
+      fullName: fullName ?? this.fullName,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
@@ -192,7 +212,9 @@ class Student extends Equatable {
       registrationSessionId: registrationSessionId ?? this.registrationSessionId,
       faceEmbeddings: faceEmbeddings ?? this.faceEmbeddings,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? DateTime.now(),
+      lastUpdatedAt: lastUpdatedAt ?? DateTime.now(),
+      department: department ?? this.department,
+      program: program ?? this.program,
     );
   }
 
@@ -200,46 +222,83 @@ class Student extends Equatable {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'studentId': studentId,
+      'fullName': fullName,
       'firstName': firstName,
       'lastName': lastName,
       'email': email,
       'phoneNumber': phoneNumber,
       'dateOfBirth': dateOfBirth.toIso8601String(),
-      'gender': gender.name,
+      'gender': gender?.name,
       'nationality': nationality,
       'major': major,
       'enrollmentYear': enrollmentYear,
-      'academicLevel': academicLevel.name,
+      'academicLevel': academicLevel?.name,
+      'department': department,
+      'program': program,
       'status': status.name,
       'registrationSessionId': registrationSessionId,
       'faceEmbeddings': faceEmbeddings,
       'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
+      'lastUpdatedAt': lastUpdatedAt?.toIso8601String(),
     };
   }
 
   /// Create student from JSON
   factory Student.fromJson(Map<String, dynamic> json) {
+    // Support both camelCase (for API) and snake_case (for database)
     return Student(
       id: json['id'] as String,
-      firstName: json['firstName'] as String,
-      lastName: json['lastName'] as String,
+      studentId: (json['student_id'] ?? json['studentId']) as String,
+      fullName: (json['full_name'] ?? json['fullName']) as String,
+      department: (json['department']) as String,
+      program: (json['program']) as String,
+      firstName: (json['first_name'] ?? json['firstName']) as String?,
+      lastName: (json['last_name'] ?? json['lastName']) as String?,
       email: json['email'] as String,
-      phoneNumber: json['phoneNumber'] as String,
-      dateOfBirth: DateTime.parse(json['dateOfBirth'] as String),
-      gender: Gender.values.firstWhere((e) => e.name == json['gender']),
-      nationality: json['nationality'] as String,
-      major: json['major'] as String,
-      enrollmentYear: json['enrollmentYear'] as int,
-      academicLevel: AcademicLevel.values.firstWhere((e) => e.name == json['academicLevel']),
+      phoneNumber: (json['phone_number'] ?? json['phoneNumber']) as String?,
+      dateOfBirth: DateTime.parse((json['date_of_birth'] ?? json['dateOfBirth']) as String),
+      gender: json['gender'] != null 
+          ? Gender.values.firstWhere((e) => e.name == json['gender'])
+          : null,
+      nationality: json['nationality'] as String?,
+      major: json['major'] as String?,
+      enrollmentYear: (json['enrollment_year'] ?? json['enrollmentYear']) as int?,
+      academicLevel: (json['academic_level'] ?? json['academicLevel']) != null
+          ? AcademicLevel.values.firstWhere((e) => e.name == (json['academic_level'] ?? json['academicLevel']))
+          : null,
       status: StudentStatus.values.firstWhere((e) => e.name == json['status']),
-      registrationSessionId: json['registrationSessionId'] as String?,
-      faceEmbeddings: (json['faceEmbeddings'] as List<dynamic>?)
-          ?.map((e) => (e as List<dynamic>).map((v) => v as double).toList())
-          .toList() ?? [],
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      registrationSessionId: (json['registration_session_id'] ?? json['registrationSessionId']) as String?,
+      faceEmbeddings: _parseFaceEmbeddings(json['face_embeddings'] ?? json['faceEmbeddings']),
+      createdAt: DateTime.parse((json['created_at'] ?? json['createdAt']) as String),
+      lastUpdatedAt: (json['last_updated_at'] ?? json['lastUpdatedAt']) != null 
+          ? DateTime.parse((json['last_updated_at'] ?? json['lastUpdatedAt']) as String)
+          : null,
     );
+  }
+
+  /// Parse face embeddings from database string or JSON
+  static List<List<double>> _parseFaceEmbeddings(dynamic value) {
+    if (value == null) return [];
+    
+    if (value is String) {
+      try {
+        final decoded = jsonDecode(value) as List<dynamic>;
+        return decoded
+            .map((e) => (e as List<dynamic>).map((v) => (v as num).toDouble()).toList())
+            .toList();
+      } catch (e) {
+        return [];
+      }
+    }
+    
+    if (value is List) {
+      return (value)
+          .map((e) => (e as List<dynamic>).map((v) => (v as num).toDouble()).toList())
+          .toList();
+    }
+    
+    return [];
   }
 
   /// Validate student data
@@ -291,9 +350,13 @@ class Student extends Equatable {
   @override
   List<Object?> get props => [
     id,
+    studentId,
+    fullName,
+    email,
+    department,
+    program,
     firstName,
     lastName,
-    email,
     phoneNumber,
     dateOfBirth,
     gender,
@@ -305,7 +368,7 @@ class Student extends Equatable {
     registrationSessionId,
     faceEmbeddings,
     createdAt,
-    updatedAt,
+    lastUpdatedAt,
   ];
 
   @override

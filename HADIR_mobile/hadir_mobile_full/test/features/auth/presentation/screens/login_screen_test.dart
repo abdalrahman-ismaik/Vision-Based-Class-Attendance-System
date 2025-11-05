@@ -291,7 +291,9 @@ void main() {
       testWidgets('should call login with correct credentials', (WidgetTester tester) async {
         // Arrange
         when(mockAuthProvider.state).thenReturn(const AuthState.initial());
-        when(mockAuthProvider.login(any)).thenAnswer((_) async {});
+        when(mockAuthProvider.login(any)).thenAnswer((_) async {
+          return null;
+        });
         
         // Act
         await tester.pumpWidget(createLoginScreen());
@@ -475,7 +477,9 @@ void main() {
       testWidgets('should submit form using Enter key', (WidgetTester tester) async {
         // Arrange
         when(mockAuthProvider.state).thenReturn(const AuthState.initial());
-        when(mockAuthProvider.login(any)).thenAnswer((_) async {});
+        when(mockAuthProvider.login(any)).thenAnswer((_) async {
+          return null;
+        });
         
         // Act
         await tester.pumpWidget(createLoginScreen());
@@ -563,7 +567,7 @@ void main() {
         expect(loginButton.textColor, isNotNull);
         
         // Test high contrast mode
-        await tester.binding.platformDispatcher.onAccessibilityFeaturesChanged?.call();
+        tester.binding.platformDispatcher.onAccessibilityFeaturesChanged?.call();
         await tester.pump();
         
         // Should still be accessible
@@ -577,7 +581,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           MediaQuery(
-            data: const MediaQueryData(textScaleFactor: 2.0), // Large font size
+            data: const MediaQueryData(textScaler: TextScaler.linear(2.0)), // Large font size
             child: createLoginScreen(),
           ),
         );
@@ -660,7 +664,7 @@ void main() {
         await tester.pumpWidget(createLoginScreen());
         
         // Simulate long idle time
-        await tester.binding.scheduleFrameCallback((_) {
+        tester.binding.scheduleFrameCallback((_) {
           // Simulate session timeout warning
         });
         
@@ -680,6 +684,7 @@ void main() {
         when(mockAuthProvider.state).thenReturn(const AuthState.initial());
         when(mockAuthProvider.login(any)).thenAnswer((_) async {
           await Future.delayed(const Duration(milliseconds: 500));
+          return null;
         });
         
         // Act

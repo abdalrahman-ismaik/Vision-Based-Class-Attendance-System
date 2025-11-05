@@ -1,19 +1,17 @@
-// TODO: Add imports once packages are available and code is generated
-// import 'package:flutter/material.dart';
-// import 'package:go_router/go_router.dart';
-// import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// TODO: Add feature page imports once pages are created
-// import '../features/auth/presentation/pages/login_page.dart';
-// import '../features/onboarding/presentation/pages/onboarding_page.dart';
-// import '../features/dashboard/presentation/pages/dashboard_page.dart';
-// import '../features/student_registration/presentation/pages/student_registration_page.dart';
-// import '../features/camera/presentation/pages/camera_page.dart';
-// import '../features/profile/presentation/pages/profile_page.dart';
-// import '../features/settings/presentation/pages/settings_page.dart';
+import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/onboarding/presentation/pages/onboarding_page.dart';
+import '../../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../../features/registration/presentation/screens/registration_screen.dart';
+import '../../features/camera/presentation/pages/camera_page.dart';
+import '../../features/student_management/presentation/screens/student_list_screen.dart';
+import '../../features/student_management/presentation/screens/student_detail_screen.dart';
 
 import 'route_names.dart';
-// import 'route_guards.dart';
+import 'route_guards.dart';
 
 /// Global router configuration for the HADIR Mobile application
 /// 
@@ -53,7 +51,10 @@ class AppRouter {
         GoRoute(
           path: RouteNames.dashboard,
           name: 'dashboard',
-          builder: (context, state) => const DashboardPage(),
+          builder: (context, state) {
+            print('🚀 [ROUTER] Building Dashboard route at ${RouteNames.dashboard}');
+            return const DashboardPage();
+          },
           redirect: (context, state) => authGuard.redirectIfNotAuthenticated(state),
         ),
         
@@ -61,7 +62,7 @@ class AppRouter {
         GoRoute(
           path: RouteNames.studentRegistration,
           name: 'student-registration',
-          builder: (context, state) => const StudentRegistrationPage(),
+          builder: (context, state) => const RegistrationScreen(),
           redirect: (context, state) => authGuard.redirectIfNotAuthenticated(state),
         ),
         
@@ -76,45 +77,30 @@ class AppRouter {
           redirect: (context, state) => authGuard.redirectIfNotAuthenticated(state),
         ),
         
-        // Profile Route (Protected)
+        // Student Management Routes (Protected)
         GoRoute(
-          path: RouteNames.profile,
-          name: 'profile',
-          builder: (context, state) => const ProfilePage(),
+          path: '/students',
+          name: 'students',
+          builder: (context, state) => const StudentListScreen(),
           redirect: (context, state) => authGuard.redirectIfNotAuthenticated(state),
         ),
         
-        // Settings Route (Protected)
         GoRoute(
-          path: RouteNames.settings,
-          name: 'settings',
-          builder: (context, state) => const SettingsPage(),
-          redirect: (context, state) => authGuard.redirectIfNotAuthenticated(state),
-        ),
-        
-        // Student Detail Routes
-        GoRoute(
-          path: '${RouteNames.studentDetail}/:id',
+          path: '/students/:id',
           name: 'student-detail',
           builder: (context, state) {
             final studentId = state.pathParameters['id']!;
-            return StudentDetailPage(studentId: studentId);
+            return StudentDetailScreen(studentId: studentId);
           },
-          redirect: (context, state) => authGuard.redirectIfNotAuthenticated(state),
-        ),
-        
-        // Results/Reports Route
-        GoRoute(
-          path: RouteNames.results,
-          name: 'results',
-          builder: (context, state) => const ResultsPage(),
           redirect: (context, state) => authGuard.redirectIfNotAuthenticated(state),
         ),
       ],
       
       // Error handling
-      errorBuilder: (context, state) => ErrorPage(
-        error: state.error?.toString() ?? 'Unknown error',
+      errorBuilder: (context, state) => Scaffold(
+        body: Center(
+          child: Text('Error: ${state.error?.toString() ?? 'Unknown error'}'),
+        ),
       ),
       
       // Custom redirect logic

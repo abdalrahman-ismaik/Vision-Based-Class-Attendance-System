@@ -49,7 +49,7 @@ abstract class RegistrationRepository {
   Future<List<RegistrationSession>> getSessions({
     int limit = 50,
     int offset = 0,
-    RegistrationSessionStatus? status,
+    SessionStatus? status,
     String? studentId,
     DateTime? startDate,
     DateTime? endDate,
@@ -65,7 +65,7 @@ abstract class RegistrationRepository {
   /// Returns the total number of sessions matching the criteria
   /// Throws [DatabaseException] if database operation fails
   Future<int> getSessionCount({
-    RegistrationSessionStatus? status,
+    SessionStatus? status,
     String? studentId,
     DateTime? startDate,
     DateTime? endDate,
@@ -80,7 +80,7 @@ abstract class RegistrationRepository {
   /// Returns a list of sessions with the specified status
   /// Throws [DatabaseException] if database operation fails
   Future<List<RegistrationSession>> getSessionsByStatus(
-    RegistrationSessionStatus status, {
+    SessionStatus status, {
     int limit = 50,
     int offset = 0,
   });
@@ -183,7 +183,7 @@ abstract class RegistrationRepository {
   /// 
   /// Returns a map where keys are status values and values are session counts
   /// Throws [DatabaseException] if database operation fails
-  Future<Map<RegistrationSessionStatus, int>> getSessionCountByStatus();
+  Future<Map<SessionStatus, int>> getSessionCountByStatus();
 
   /// Get sessions created within a date range
   /// 
@@ -205,7 +205,7 @@ abstract class RegistrationRepository {
   /// 
   /// Returns a map where keys are status values and values are average durations in minutes
   /// Throws [DatabaseException] if database operation fails
-  Future<Map<RegistrationSessionStatus, double>> getAverageSessionDurationByStatus();
+  Future<Map<SessionStatus, double>> getAverageSessionDurationByStatus();
 
   /// Get sessions with retry count above threshold
   /// 

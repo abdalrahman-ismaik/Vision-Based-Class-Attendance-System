@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hadir_mobile_full/features/auth/presentation/providers/auth_provider_setup.dart';
 
 /// Login screen for administrator authentication
 class LoginScreen extends ConsumerStatefulWidget {
@@ -16,7 +17,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   
   bool _isPasswordVisible = false;
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -27,6 +27,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authControllerProvider);
+    final isLoading = authState.isLoading;
+    
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -85,7 +88,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             }
                             return null;
                           },
-                          enabled: !_isLoading,
+                          enabled: !isLoading,
                           textInputAction: TextInputAction.next,
                         ),
                         const SizedBox(height: 16),
@@ -115,7 +118,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             }
                             return null;
                           },
-                          enabled: !_isLoading,
+                          enabled: !isLoading,
                           textInputAction: TextInputAction.done,
                           onFieldSubmitted: (_) => _handleLogin(),
                         ),
@@ -123,14 +126,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         // Login button
                         ElevatedButton(
-                          onPressed: _isLoading ? null : _handleLogin,
+                          onPressed: isLoading ? null : _handleLogin,
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: _isLoading
+                          child: isLoading
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
@@ -148,7 +151,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         // Forgot password link
                         TextButton(
-                          onPressed: _isLoading ? null : _handleForgotPassword,
+                          onPressed: isLoading ? null : _handleForgotPassword,
                           child: const Text('Forgot Password?'),
                         ),
                       ],
@@ -168,34 +171,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
-      // Get auth provider and attempt login
-      // final authNotifier = ref.read(authProvider.notifier);
-      // final result = await authNotifier.login(
-      //   _usernameController.text.trim(),
-      //   _passwordController.text,
-      // );
+      // Use auth provider to attempt login
+      final authController = ref.read(authControllerProvider.notifier);
+      await authController.login(
+        _usernameController.text.trim(),
+        _passwordController.text,
+      );
 
-      // Simulate login for now
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (mounted) {
-        // Navigate to dashboard on successful login
-        context.go('/dashboard');
+      // Check if login was successful
+      final authState = ref.read(authControllerProvider);
+      if (authState.isAuthenticated && mounted) {
+        // Navigate to registration screen on successful login
+        context.go('/registration');
+      } else if (authState.error != null && mounted) {
+        _showErrorDialog(authState.error!.message);
       }
     } catch (e) {
       if (mounted) {
         _showErrorDialog('Login failed: ${e.toString()}');
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
   }

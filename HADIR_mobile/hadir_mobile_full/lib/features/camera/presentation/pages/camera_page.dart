@@ -4,7 +4,7 @@ import '../../../../shared/shared.dart';
 
 /// Camera page for capturing and processing student photos
 /// 
-/// This page demonstrates the integration with the YOLOv7-Pose
+/// This page demonstrates the integration with ML Kit Face Detection
 /// frame selection service for AI-powered photo selection.
 class CameraPage extends StatefulWidget {
   final String? studentId;
@@ -21,7 +21,7 @@ class _CameraPageState extends State<CameraPage> {
   bool _isProcessing = false;
   ServiceHealthResult? _serviceHealth;
   FrameSelectionResult? _lastResult;
-  List<File> _capturedImages = [];
+  final List<File> _capturedImages = [];
 
   @override
   void initState() {
@@ -112,7 +112,7 @@ class _CameraPageState extends State<CameraPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'YOLOv7-Pose Service',
+                    'ML Kit Face Detection',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),

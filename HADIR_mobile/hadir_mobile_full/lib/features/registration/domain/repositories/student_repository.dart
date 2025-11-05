@@ -82,6 +82,12 @@ abstract class StudentRepository {
   /// Throws [DatabaseException] if database operation fails
   Future<bool> existsByEmail(String email);
 
+  /// Check if a student exists by student ID
+  /// 
+  /// Returns true if student with student_id exists, false otherwise
+  /// Throws [DatabaseException] if database operation fails
+  Future<bool> existsByStudentId(String studentId);
+
   /// Get students by their status
   /// 
   /// [status] - The status to filter by
