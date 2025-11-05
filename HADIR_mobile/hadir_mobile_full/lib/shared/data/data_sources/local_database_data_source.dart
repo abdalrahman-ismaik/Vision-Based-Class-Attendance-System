@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:async';
 import 'dart:io';
+import 'sync_database_migration.dart';
 
 /// Local SQLite database data source for HADIR mobile app
 /// Provides low-level database operations and schema management
@@ -25,7 +26,7 @@ class LocalDatabaseDataSource {
     
     return await openDatabase(
       path,
-      version: 4, // ← Increment for student management optimization
+      version: 5, // ← Increment for sync functionality (v4 → v5)
       onCreate: _createDatabase,
       onUpgrade: _upgradeDatabase,
     );
@@ -82,6 +83,11 @@ class LocalDatabaseDataSource {
     // Migration from version 3 to 4: Add optimized indices for student management
     if (oldVersion < 4 && newVersion >= 4) {
       await _addStudentManagementIndices(db);
+    }
+    
+    // Migration from version 4 to 5: Add sync functionality columns
+    if (oldVersion < 5 && newVersion >= 5) {
+      await SyncDatabaseMigration.migrateTo_v5(db);
     }
   }
 

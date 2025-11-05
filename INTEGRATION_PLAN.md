@@ -1,27 +1,42 @@
 # Mobile App & Backend Integration Plan
 ## Vision-Based Class Attendance System
 
-**Version:** 1.0  
+**Version:** 2.0 - FAST TRACK (1-Week Sprint)  
 **Date:** November 5, 2025  
-**Status:** Planning Phase
+**Status:** Active Development  
+**Timeline:** 7 Days (November 5-12, 2025)
+
+---
+
+## 🚨 IMPORTANT: Existing API Discovery
+
+**Good News:** The backend already has a working API endpoint that accepts face images!
+- ✅ `POST /api/students/` - Registers students with face images
+- ✅ Background processing (face detection, augmentation, embeddings)
+- ✅ Status tracking in database
+- ✅ Error handling and logging
+
+**Impact on Timeline:** This reduces implementation time from 6 weeks to **1 week** by leveraging existing infrastructure.
+
+See [EXISTING_API_ANALYSIS.md](./EXISTING_API_ANALYSIS.md) for full details.
 
 ---
 
 ## 📋 Executive Summary
 
-This document outlines the comprehensive integration strategy between the **HADIR Mobile App** (Flutter) and the **Backend Face Processing System** (Flask/Python). The integration enables automatic synchronization of student registration data and face images from the mobile app to the backend server, where face embeddings are generated, classifiers are trained, and the data is prepared for web-based face recognition attendance marking.
+This document outlines the **fast-track integration strategy** between the **HADIR Mobile App** (Flutter) and the **Backend Face Processing System** (Flask/Python). By leveraging the existing `/api/students/` endpoint, we can achieve full integration in **1 week** instead of 6 weeks.
 
-### Key Objectives
-1. **Seamless Data Sync**: Automatically sync student data and images from mobile to backend
-2. **Background Processing**: Process face embeddings and train classifiers on the backend
-3. **Status Visibility**: Provide real-time sync status and processing feedback
-4. **Error Resilience**: Implement robust error handling and retry mechanisms
-5. **Offline Support**: Queue sync operations when backend is unavailable
-6. **Audit Trail**: Comprehensive logging for debugging and compliance
+### Key Objectives (Updated for 1-Week Sprint)
+1. **Seamless Data Sync**: Use existing API to sync student data and images from mobile to backend
+2. **Background Processing**: Already implemented - face embeddings and processing work out of the box
+3. **Status Visibility**: Implement lightweight status polling using existing database fields
+4. **Error Resilience**: Basic retry logic with exponential backoff
+5. **Essential Logging**: Focus on critical sync operations only
+6. **MVP Feature Set**: Deliver working solution, optimize later
 
 ---
 
-## 🏗️ System Architecture Overview
+## 🏗️ System Architecture Overview (Fast-Track Version)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -35,18 +50,16 @@ This document outlines the comprehensive integration strategy between the **HADI
 │           │                              │                          │
 │           │         ┌────────────────────┴───────┐                 │
 │           └────────→│   Sync Service (NEW)       │                 │
-│                     │  • Queue Management        │                 │
-│                     │  • Status Tracking         │                 │
-│                     │  • Error Handling          │                 │
-│                     │  • Comprehensive Logging   │                 │
+│                     │  • Simple API Client       │◄─── 1 Week Sprint
+│                     │  • Status Polling          │                 │
+│                     │  • Basic Error Handling    │                 │
+│                     │  • Essential Logging       │                 │
 │                     └────────────┬───────────────┘                 │
 │                                  │                                  │
 │  ┌──────────────────────────────┴───────────────────────┐         │
-│  │         Local SQLite Database                        │         │
-│  │  • students table (with sync_status)                 │         │
-│  │  • selected_frames table (images)                    │         │
-│  │  • sync_queue table (pending operations)             │         │
-│  │  • sync_log table (audit trail)                      │         │
+│  │         Local SQLite Database (Minimal Changes)      │         │
+│  │  • students table (add sync_status column)           │         │
+│  │  • selected_frames table (existing)                  │         │
 │  └──────────────────────────────────────────────────────┘         │
 │                                  │                                  │
 └──────────────────────────────────┼──────────────────────────────────┘
@@ -59,29 +72,26 @@ This document outlines the comprehensive integration strategy between the **HADI
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  ┌────────────────────────────────────────────────────────┐        │
-│  │            NEW SYNC API ENDPOINTS                       │        │
-│  │  POST /api/sync/student                                 │        │
-│  │  POST /api/sync/images                                  │        │
-│  │  GET  /api/sync/status/<sync_id>                       │        │
-│  │  GET  /api/sync/results/<student_id>                   │        │
-│  │  POST /api/sync/batch                                   │        │
+│  │        ✅ EXISTING API (Already Working!)              │        │
+│  │  POST /api/students/  ◄─── Use this! No changes needed │        │
+│  │    • Accepts student data + face image                 │        │
+│  │    • Background processing (face detection, etc.)      │        │
+│  │    • Status tracking in database.json                  │        │
 │  └────────────────┬───────────────────────────────────────┘        │
 │                   │                                                  │
 │  ┌────────────────┴───────────────────────────────────┐            │
-│  │         Background Processing Queue                │            │
+│  │    ✅ Background Processing (Already Implemented!)  │            │
 │  │  • Face Detection (RetinaFace)                     │            │
-│  │  • Image Augmentation (20+ variations)             │            │
+│  │  • Image Augmentation (20 variations)              │            │
 │  │  • Embedding Generation (MobileFaceNet)            │            │
-│  │  • Classifier Training (SVM)                       │            │
-│  │  • Status Updates                                  │            │
+│  │  • Status Updates (processing_status field)        │            │
 │  └────────────────┬───────────────────────────────────┘            │
 │                   │                                                  │
 │  ┌────────────────┴───────────────────────────────────┐            │
-│  │         Backend Storage                             │            │
+│  │    ✅ Backend Storage (Already Working!)           │            │
 │  │  • database.json (student records)                  │            │
 │  │  • processed_faces/<student_id>/embeddings.npy      │            │
 │  │  • classifiers/<class_id>.pkl                       │            │
-│  │  • sync_log.json (audit trail)                      │            │
 │  └─────────────────────────────────────────────────────┘            │
 │                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
@@ -90,224 +100,192 @@ This document outlines the comprehensive integration strategy between the **HADI
                                    ▼
                     ┌─────────────────────────────┐
                     │   Web Face Recognition App  │
-                    │   (Future Implementation)   │
+                    │   (Ready to use!)           │
                     └─────────────────────────────┘
 ```
 
+**Key Changes from Original Plan:**
+- ❌ No new backend endpoints needed (use existing `/api/students/`)
+- ❌ No background processing queue (already implemented)
+- ❌ No sync registry (use existing database.json)
+- ✅ Focus only on mobile app integration
+- ✅ Minimal database changes
+- ✅ Leverage 80% of existing infrastructure
+
 ---
 
-## 🔄 Integration Flow
+## 🔄 Integration Flow (Fast-Track Version)
 
-### 1. Student Registration Flow (Mobile → Backend)
+### 1. Student Registration Flow (Mobile → Backend) - SIMPLIFIED
 
 ```
-Mobile App                          Backend Server
+Mobile App                          Backend Server (Existing API)
     │                                      │
     │ 1. Student completes registration   │
     │    (personal info + face images)    │
     │                                      │
     │ 2. Data saved to local SQLite DB    │
-    │    status = 'pending_sync'          │
+    │    sync_status = 'not_synced'       │
     │                                      │
-    │ 3. SyncService detects new record   │
-    │    (triggered on app resume)        │
+    │ 3. SyncService triggered             │
+    │    (on app resume or manual)        │
     │                                      │
-    ├─ 4. POST /api/sync/student ─────────→│
-    │    {student_id, name, email, etc}    │
+    ├─ 4. POST /api/students/ ────────────→│ ✅ EXISTING ENDPOINT!
+    │    FormData:                         │
+    │    - student_id                      │
+    │    - name, email, department         │
+    │    - image file                      │
     │                                      │
-    │                                      │ 5. Validate & create student record
-    │                                      │    Generate sync_id
-    │                                      │    Return sync_id
-    │←─── 6. Response {sync_id} ───────────┤
+    │                                      │ 5. ✅ Save student to database.json
+    │                                      │    Save image to uploads/students/
+    │                                      │    Start background processing
+    │                                      │    Return student record
+    │←─── 6. Response {student, uuid} ─────┤
     │                                      │
-    │ 7. Update local: sync_id saved       │
+    │ 7. Update local:                     │
+    │    sync_status = 'synced'            │
+    │    backend_student_id = student_id   │
     │                                      │
-    ├─ 8. POST /api/sync/images ──────────→│
-    │    {sync_id, images[]}               │
+    │ 8. Start status polling (optional)   │
     │                                      │
-    │                                      │ 9. Save images
-    │                                      │    Queue processing job
-    │                                      │    Status = 'processing'
-    │←─── 10. Response {job_id} ───────────┤
-    │                                      │
-    │ 11. Status = 'synced'                │
-    │     Poll for results                 │
-    │                                      │
-    │                                      │ 12. Background Processing:
+    │                                      │ 9. ✅ Background Processing:
+    │                                      │    (Already implemented!)
     │                                      │     - Face detection
     │                                      │     - Image augmentation
     │                                      │     - Embedding generation
-    │                                      │     - Classifier training
-    │                                      │     Status = 'completed'
+    │                                      │    Update: processing_status
     │                                      │
-    ├─ 13. GET /api/sync/status/{sync_id}─→│
+    ├─ 10. GET /api/students/{id} ────────→│ ✅ EXISTING ENDPOINT!
+    │     (poll every 10 seconds)          │
     │                                      │
-    │←─── 14. Response {status, progress}──┤
+    │←─── 11. Response {processing_status}─┤
+    │      "pending" | "completed" | "failed"
     │                                      │
-    │ 15. Update local: status='completed' │
+    │ 12. Update local when completed      │
     │     Display success notification     │
     │                                      │
 ```
 
-### 2. Sync Trigger Scenarios
+**Key Simplifications:**
+- ✅ Only **2 API endpoints** needed (both already exist!)
+- ✅ No sync_id tracking needed
+- ✅ Use student_id for correlation
+- ✅ Simpler status: not_synced → synced → (poll for) completed
+- ⚡ **90% less complexity** than original plan
 
-| Trigger Event | Description | Priority |
-|--------------|-------------|----------|
-| **App Resume** | When app comes to foreground | High |
-| **Registration Complete** | Immediately after student registration | High |
-| **Manual Sync** | User-initiated sync button | High |
-| **Periodic Sync** | Every 30 minutes (configurable) | Medium |
-| **Network Available** | When internet connection restored | Medium |
-| **Retry Queue** | Failed sync attempts (exponential backoff) | Low |
+### 2. Sync Trigger Scenarios (Fast-Track)
+
+| Trigger Event | Description | Priority | Implementation |
+|--------------|-------------|----------|----------------|
+| **Registration Complete** | Immediately after student registration | High | ✅ Day 2 |
+| **Manual Sync** | User-initiated sync button | High | ✅ Day 3 |
+| **App Resume** | When app comes to foreground | Medium | ⚠️ Nice-to-have |
+| **Retry on Failure** | Automatic retry (3 attempts) | Medium | ✅ Day 4 |
+
+**Removed for 1-week timeline:**
+- ❌ Periodic sync (not essential)
+- ❌ Network change detection (can add later)
+- ❌ Complex queue system (use simple retry instead)
 
 ---
 
-## 📊 Database Schema Updates
+## 📊 Database Schema Updates (MINIMAL - Fast-Track)
 
-### Mobile App (SQLite) - New/Modified Tables
+### Mobile App (SQLite) - Minimal Changes Only
 
-#### 1. Students Table - Add Sync Columns
+#### 1. Students Table - Add Essential Sync Columns Only
 ```sql
+-- Only 4 essential columns needed for 1-week sprint
 ALTER TABLE students ADD COLUMN sync_status TEXT DEFAULT 'not_synced';
-ALTER TABLE students ADD COLUMN sync_id TEXT;
 ALTER TABLE students ADD COLUMN backend_student_id TEXT;
 ALTER TABLE students ADD COLUMN last_sync_attempt TEXT;
-ALTER TABLE students ADD COLUMN last_sync_success TEXT;
 ALTER TABLE students ADD COLUMN sync_error TEXT;
-ALTER TABLE students ADD COLUMN processing_status TEXT;
-ALTER TABLE students ADD COLUMN sync_retry_count INTEGER DEFAULT 0;
 ```
 
-**Sync Status Values:**
+**Sync Status Values (Simplified):**
 - `not_synced` - New record, not sent to backend
 - `syncing` - Currently uploading to backend
-- `synced` - Successfully sent to backend
-- `processing` - Backend is processing images
-- `completed` - Backend processing complete
+- `synced` - Successfully sent to backend (can poll for processing_status)
 - `failed` - Sync failed (see sync_error)
 
-#### 2. Sync Queue Table (NEW)
-```sql
-CREATE TABLE sync_queue (
-  id TEXT PRIMARY KEY,
-  student_id TEXT NOT NULL,
-  operation_type TEXT NOT NULL, -- 'register', 'update', 'images'
-  payload TEXT NOT NULL, -- JSON data
-  priority INTEGER DEFAULT 5,
-  created_at TEXT NOT NULL,
-  scheduled_for TEXT NOT NULL,
-  retry_count INTEGER DEFAULT 0,
-  last_error TEXT,
-  status TEXT DEFAULT 'pending', -- 'pending', 'in_progress', 'completed', 'failed'
-  FOREIGN KEY (student_id) REFERENCES students (id)
-);
+**Removed/Deferred:**
+- ❌ sync_id (not needed - use student_id)
+- ❌ processing_status (get from backend via polling)
+- ❌ sync_retry_count (track in memory, not DB)
+- ❌ last_sync_success (not essential for MVP)
 
-CREATE INDEX idx_sync_queue_status ON sync_queue (status);
-CREATE INDEX idx_sync_queue_scheduled ON sync_queue (scheduled_for);
-```
+#### 2. ❌ Sync Queue Table - NOT NEEDED
+**Reason:** Simple retry logic in memory is sufficient for 1-week MVP
 
-#### 3. Sync Log Table (NEW)
-```sql
-CREATE TABLE sync_log (
-  id TEXT PRIMARY KEY,
-  student_id TEXT,
-  sync_id TEXT,
-  operation_type TEXT NOT NULL,
-  status TEXT NOT NULL, -- 'started', 'success', 'error'
-  request_data TEXT, -- JSON
-  response_data TEXT, -- JSON
-  error_message TEXT,
-  duration_ms INTEGER,
-  timestamp TEXT NOT NULL,
-  FOREIGN KEY (student_id) REFERENCES students (id)
-);
+#### 3. ❌ Sync Log Table - NOT NEEDED  
+**Reason:** Use console logging and optional in-memory logs for debugging
+**Alternative:** Can add simple logging to app documents directory if needed
 
-CREATE INDEX idx_sync_log_student ON sync_log (student_id);
-CREATE INDEX idx_sync_log_timestamp ON sync_log (timestamp DESC);
-CREATE INDEX idx_sync_log_status ON sync_log (status);
-```
+### Backend (JSON/Files) - ✅ NO CHANGES NEEDED!
 
-### Backend (JSON/Files) - New Structure
-
-#### sync_registry.json
+#### ✅ database.json (Already Has Everything We Need!)
 ```json
 {
-  "syncs": {
-    "sync_id_123": {
-      "sync_id": "sync_id_123",
-      "mobile_student_id": "uuid-from-mobile",
-      "backend_student_id": "S12345",
-      "status": "completed",
-      "created_at": "2025-11-05T10:30:00Z",
-      "updated_at": "2025-11-05T10:35:00Z",
-      "student_data": {
-        "student_id": "S12345",
-        "name": "John Doe",
-        "email": "john@university.edu"
-      },
-      "processing_stages": {
-        "student_created": {
-          "status": "completed",
-          "timestamp": "2025-11-05T10:30:05Z"
-        },
-        "images_received": {
-          "status": "completed",
-          "image_count": 5,
-          "timestamp": "2025-11-05T10:31:00Z"
-        },
-        "face_detection": {
-          "status": "completed",
-          "faces_detected": 5,
-          "timestamp": "2025-11-05T10:32:00Z"
-        },
-        "augmentation": {
-          "status": "completed",
-          "augmented_count": 100,
-          "timestamp": "2025-11-05T10:33:00Z"
-        },
-        "embedding_generation": {
-          "status": "completed",
-          "embeddings_count": 100,
-          "timestamp": "2025-11-05T10:34:00Z"
-        },
-        "classifier_training": {
-          "status": "completed",
-          "accuracy": 98.5,
-          "timestamp": "2025-11-05T10:35:00Z"
-        }
-      },
-      "error": null
-    }
+  "S12345": {
+    "uuid": "abc-123-def-456",
+    "student_id": "S12345",
+    "name": "John Doe",
+    "email": "john@university.edu",
+    "department": "Computer Science",
+    "year": 3,
+    "image_path": "uploads/students/S12345/S12345_20251105_103000.jpg",
+    "registered_at": "2025-11-05T10:30:00.123456",
+    "processing_status": "completed",  // ✅ Use this for status tracking!
+    "processed_at": "2025-11-05T10:32:00.123456",
+    "num_augmentations": 20,
+    "embeddings_path": "processed_faces/S12345/embeddings.npy",
+    "processing_error": null  // ✅ Use this for error tracking!
   }
 }
 ```
 
+**What We're Using:**
+- ✅ `processing_status`: "pending" | "completed" | "failed"
+- ✅ `processing_error`: Error message if failed
+- ✅ `student_id`: Correlation key between mobile and backend
+- ✅ All student data already stored
+
+**What We're NOT Adding:**
+- ❌ No sync_registry.json (not needed)
+- ❌ No processing_stages tracking (too complex for 1 week)
+- ❌ No sync_id (student_id is sufficient)
+
 ---
 
-## 🛠️ Implementation Components
+## 🛠️ Implementation Components (FAST-TRACK)
 
-### A. Mobile App Components (Flutter)
+### A. Mobile App Components (Flutter) - SIMPLIFIED
 
-#### 1. Sync Service (`lib/core/services/sync_service.dart`)
+#### 1. Sync Service (`lib/core/services/sync_service.dart`) - MINIMAL VERSION
 ```dart
 class SyncService {
-  // Core sync operations
-  Future<SyncResult> syncStudent(Student student);
-  Future<SyncResult> syncImages(String syncId, List<File> images);
-  Future<SyncStatusResponse> checkSyncStatus(String syncId);
+  final Dio _dio;
+  final LocalDatabaseDataSource _database;
   
-  // Queue management
-  Future<void> enqueueSyncOperation(SyncOperation operation);
-  Future<void> processSyncQueue();
+  // ✅ ONLY 3 METHODS NEEDED FOR MVP!
   
-  // Status tracking
-  Stream<SyncStatus> watchStudentSyncStatus(String studentId);
+  /// Sync student to backend using existing /api/students/ endpoint
+  Future<SyncResult> syncStudent(Student student, File imageFile);
   
-  // Error handling
-  Future<void> retryFailedSyncs();
-  Future<void> handleSyncError(String studentId, Exception error);
+  /// Check processing status using existing /api/students/{id} endpoint
+  Future<ProcessingStatus> checkProcessingStatus(String studentId);
+  
+  /// Retry failed sync with exponential backoff
+  Future<SyncResult> retrySyncWithBackoff(Student student, File imageFile);
 }
 ```
+
+**Removed for 1-week sprint:**
+- ❌ syncImages() - not needed, single image in syncStudent()
+- ❌ enqueueSyncOperation() - simple retry is enough
+- ❌ processSyncQueue() - no queue needed
+- ❌ watchStudentSyncStatus() - simple polling is enough
+- ❌ retryFailedSyncs() - replaced with retrySyncWithBackoff()
 
 #### 2. Sync Models (`lib/core/models/sync_models.dart`)
 ```dart
@@ -937,43 +915,140 @@ class RetryPolicy {
 
 ---
 
-## 🚀 Implementation Phases
+## 🚀 Implementation Timeline - 1-WEEK SPRINT
 
-### Phase 1: Foundation (Week 1)
-- ✅ Create integration plan document
-- Backend: Create sync API endpoints skeleton
-- Mobile: Create SyncService structure
-- Database: Add sync-related tables and columns
+### **Day 1 (November 5): Setup & Database** ⚡
+**Duration:** 3-4 hours  
+**Focus:** Minimal setup, no backend changes
 
-### Phase 2: Core Sync (Week 2)
-- Implement student data sync endpoint
-- Implement image upload endpoint
-- Add background processing queue
-- Implement basic error handling
+- [x] ✅ Review existing API (`/api/students/`)
+- [x] ✅ Update integration plan with fast-track approach
+- [ ] Add 4 sync columns to mobile SQLite database
+- [ ] Test database migration on dev device
+- [ ] Create basic sync models (SyncStatus, SyncResult)
 
-### Phase 3: Status & Logging (Week 3)
-- Implement status tracking system
-- Add comprehensive logging (mobile & backend)
-- Create sync registry manager
-- Implement status polling
+**Deliverable:** Database ready for sync fields
 
-### Phase 4: Error Handling (Week 4)
-- Implement retry logic
-- Add offline queue
-- Handle edge cases
-- Add detailed error messages
+---
 
-### Phase 5: Testing & Polish (Week 5)
-- Write unit tests
-- Conduct integration testing
-- Performance optimization
-- UI/UX improvements
+### **Day 2 (November 6): Core Sync Implementation** 🔨
+**Duration:** 6-8 hours  
+**Focus:** Basic sync from mobile to backend
 
-### Phase 6: Deployment (Week 6)
-- Deploy backend updates
-- Release mobile app update
-- Monitor sync operations
-- Bug fixes and improvements
+- [ ] Create `SyncService` class with `syncStudent()` method
+- [ ] Implement HTTP client using Dio
+- [ ] Build multipart form data with student info + image
+- [ ] POST to existing `/api/students/` endpoint
+- [ ] Update local database sync_status on success/failure
+- [ ] Add basic error handling
+- [ ] Test with 1 student
+
+**Deliverable:** Can sync 1 student from mobile to backend
+
+---
+
+### **Day 3 (November 7): Status Polling & UI** 📊
+**Duration:** 6-8 hours  
+**Focus:** Track processing status and show in UI
+
+- [ ] Implement `checkProcessingStatus()` method
+- [ ] Poll backend every 10 seconds for processing_status
+- [ ] Update local database when completed
+- [ ] Add sync status icons to student list UI
+- [ ] Add manual sync button
+- [ ] Add sync status indicators (not_synced, syncing, synced, completed, failed)
+- [ ] Test complete flow: register → sync → poll → complete
+
+**Deliverable:** User can see sync status in real-time
+
+---
+
+### **Day 4 (November 8): Error Handling & Retry** 🛡️
+**Duration:** 5-6 hours  
+**Focus:** Handle failures gracefully
+
+- [ ] Implement exponential backoff retry (3 attempts)
+- [ ] Handle network errors (connection timeout, no internet)
+- [ ] Handle backend errors (400, 500 responses)
+- [ ] Display user-friendly error messages
+- [ ] Add "Retry" button for failed syncs
+- [ ] Test offline scenario
+- [ ] Test backend unavailable scenario
+
+**Deliverable:** App handles errors and retries automatically
+
+---
+
+### **Day 5 (November 9): Logging & Batch Sync** 📝
+**Duration:** 5-6 hours  
+**Focus:** Multiple students and debugging
+
+- [ ] Add console logging for all sync operations
+- [ ] Log request/response data
+- [ ] Log timing metrics
+- [ ] Implement sync for multiple students (loop)
+- [ ] Add sync progress indicator (X of Y students)
+- [ ] Handle partial failures (some sync, some fail)
+- [ ] Test with 5+ students
+
+**Deliverable:** Can sync multiple students with detailed logs
+
+---
+
+### **Day 6 (November 10): Testing & Polish** 🧪
+**Duration:** 6-8 hours  
+**Focus:** End-to-end testing and bug fixes
+
+- [ ] Test complete registration flow
+- [ ] Test sync on app resume
+- [ ] Test various network conditions
+- [ ] Test with different image formats
+- [ ] Fix any bugs found
+- [ ] Improve error messages
+- [ ] Add loading indicators
+- [ ] Polish UI/UX
+
+**Deliverable:** Stable, working integration
+
+---
+
+### **Day 7 (November 11): Documentation & Demo** 📚
+**Duration:** 4-5 hours  
+**Focus:** Documentation and demo preparation
+
+- [ ] Document API usage in README
+- [ ] Create user guide for sync feature
+- [ ] Record demo video
+- [ ] Test on physical device
+- [ ] Prepare presentation
+- [ ] Final smoke testing
+
+**Deliverable:** Production-ready integration with documentation
+
+---
+
+### **Delivery Day (November 12)** 🎉
+- [ ] Final review and testing
+- [ ] Deploy/demo to stakeholders
+- [ ] Celebrate! 🎊
+
+---
+
+## ⏱️ Time Budget
+
+| Task | Time | Percentage |
+|------|------|------------|
+| Database setup | 4h | 8% |
+| Core sync implementation | 8h | 16% |
+| Status polling & UI | 8h | 16% |
+| Error handling | 6h | 12% |
+| Logging & batch | 6h | 12% |
+| Testing & polish | 8h | 16% |
+| Documentation | 5h | 10% |
+| **Buffer for issues** | 5h | 10% |
+| **TOTAL** | **50h** | **100%** |
+
+**Daily Commitment:** ~7 hours/day for 7 days
 
 ---
 
@@ -1030,29 +1105,34 @@ class SyncConfig:
 
 ---
 
-## 🎯 Success Criteria
+## 🎯 Success Criteria (1-Week MVP)
 
-✅ **Functional Requirements**
-- [ ] Students can be synced from mobile to backend automatically
-- [ ] Images are processed and embeddings generated successfully
-- [ ] Sync status is visible and updated in real-time
-- [ ] Failed syncs retry automatically with exponential backoff
-- [ ] Offline mode queues operations for later sync
-- [ ] Admin can view sync operations in backend
+✅ **Functional Requirements (MVP)**
+- [ ] Students registered in mobile app sync to backend automatically
+- [ ] Student data + 1 face image uploaded successfully
+- [ ] Sync status visible in mobile UI (not_synced → syncing → synced)
+- [ ] Processing status tracked (pending → completed/failed)
+- [ ] Failed syncs can be retried manually or automatically (3 attempts)
+- [ ] Error messages displayed to user
 
-✅ **Performance Requirements**
-- [ ] Sync completes within 30 seconds for single student
-- [ ] Backend processes images within 5 minutes
+✅ **Performance Requirements (Relaxed for MVP)**
+- [ ] Sync initiates within 2 seconds of trigger
 - [ ] Mobile app remains responsive during sync
-- [ ] Database queries execute in < 100ms
-- [ ] API endpoints respond in < 500ms
+- [ ] Backend processes images within 5 minutes (already working)
+- [ ] Status polls every 10 seconds without blocking UI
 
-✅ **Quality Requirements**
-- [ ] 95%+ sync success rate
-- [ ] < 1% data loss during sync
-- [ ] Comprehensive logs for debugging
-- [ ] All edge cases handled gracefully
-- [ ] Unit test coverage > 80%
+✅ **Quality Requirements (Essential Only)**
+- [ ] 80%+ sync success rate (realistic for first version)
+- [ ] Basic error handling for common failures
+- [ ] Console logs for debugging
+- [ ] No app crashes during sync
+
+**Deferred to Future Versions:**
+- ⏭️ Offline queue (simple retry is enough for now)
+- ⏭️ Batch image upload (1 image per student is MVP)
+- ⏭️ Comprehensive audit trail
+- ⏭️ Unit test coverage (functional testing for now)
+- ⏭️ Performance optimization
 
 ---
 
