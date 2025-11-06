@@ -15,6 +15,7 @@ class StudentDetail {
   final StudentStatus status;
   final DateTime createdAt;
   final DateTime? lastUpdatedAt;
+  final String? registrationSessionId; // Added for sync functionality
   final List<SelectedFrame> frames;
 
   const StudentDetail({
@@ -30,6 +31,7 @@ class StudentDetail {
     required this.status,
     required this.createdAt,
     this.lastUpdatedAt,
+    this.registrationSessionId, // Added for sync functionality
     this.frames = const [],
   });
 
@@ -51,6 +53,7 @@ class StudentDetail {
       status: student.status,
       createdAt: student.createdAt,
       lastUpdatedAt: student.lastUpdatedAt,
+      registrationSessionId: student.registrationSessionId, // Added for sync functionality
       frames: frames,
     );
   }

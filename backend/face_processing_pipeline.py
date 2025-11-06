@@ -17,8 +17,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import logging
 
-# Add FaceNet directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../FaceNet'))
+# Add FaceNet directory to path - use absolute path
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+FACENET_DIR = os.path.join(os.path.dirname(BACKEND_DIR), 'FaceNet')
+if FACENET_DIR not in sys.path:
+    sys.path.insert(0, FACENET_DIR)
 
 from networks.models_facenet import MobileFaceNet
 from torchvision import transforms

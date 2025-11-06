@@ -2,6 +2,7 @@
 /// 
 /// Contains all settings for backend communication, timeouts, retry logic,
 /// and sync behavior. Configure these values based on your environment.
+library;
 
 class SyncConfig {
   // ========================================================================
@@ -21,7 +22,7 @@ class SyncConfig {
   /// - Production: 'https://api.hadir.edu/api'
   static const String backendBaseUrl = String.fromEnvironment(
     'BACKEND_URL',
-    defaultValue: 'http://10.0.2.2:5000/api', // Android emulator default
+    defaultValue: 'http://172.18.103.83:5000/api', // Using physical IP (backend shows: Running on http://172.18.103.83:5000)
   );
   
   /// Backend API version
@@ -32,10 +33,10 @@ class SyncConfig {
   // ========================================================================
   
   /// Connection timeout - Time to establish connection to server
-  static const Duration connectionTimeout = Duration(seconds: 30);
+  static const Duration connectionTimeout = Duration(minutes: 2); // Increased for emulator network delays
   
   /// Receive timeout - Time to wait for server response
-  static const Duration receiveTimeout = Duration(seconds: 60);
+  static const Duration receiveTimeout = Duration(minutes: 3); // Increased for face processing
   
   /// Send timeout - Time to wait for data upload completion
   static const Duration sendTimeout = Duration(minutes: 5);

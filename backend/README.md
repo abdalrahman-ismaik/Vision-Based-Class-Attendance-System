@@ -21,6 +21,13 @@ pip install -r requirements.txt
 
 ### 2. Run the Server
 
+**Windows (with virtual environment):**
+```powershell
+cd c:\Users\4bais\Vision-Based-Class-Attendance-System\backend
+C:\Users\4bais\Vision-Based-Class-Attendance-System\.venv\Scripts\python.exe app.py
+```
+
+**Or if virtual environment is activated:**
 ```bash
 python app.py
 ```

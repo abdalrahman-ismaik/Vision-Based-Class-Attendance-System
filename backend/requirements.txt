@@ -1,7 +1,7 @@
 # Vision-Based Class Attendance System - Backend Requirements
 
 # Flask Framework
-Flask==3.0.0
+Flask==3.0.3
 flask-restx==1.3.0
 flask-cors==4.0.0
 
@@ -9,19 +9,22 @@ flask-cors==4.0.0
 Werkzeug==3.0.1
 
 # Image Processing
-Pillow==10.1.0
-opencv-python==4.8.1.78
+Pillow==12.0.0
+opencv-python-headless==4.12.0.88
 
 # Deep Learning
-torch>=2.0.0
-torchvision>=0.15.0
+torch==2.9.0
+torchvision==0.24.0
 
 # Face Detection
 retina-face==0.0.13
 
 # Machine Learning
-scikit-learn==1.3.2
-numpy==1.24.3
+scikit-learn==1.7.2
+numpy==2.2.6
+
+# Visualization (for FaceNet utilities)
+matplotlib==3.10.7
 
 # Data Handling
 python-dateutil==2.8.2

@@ -4,6 +4,12 @@
 
 ```powershell
 cd c:\Users\4bais\Vision-Based-Class-Attendance-System\backend
+C:\Users\4bais\Vision-Based-Class-Attendance-System\.venv\Scripts\python.exe app.py
+```
+
+Or if `.venv` is activated:
+```powershell
+cd c:\Users\4bais\Vision-Based-Class-Attendance-System\backend
 python app.py
 ```
 

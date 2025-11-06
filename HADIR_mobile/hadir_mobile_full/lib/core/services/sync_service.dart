@@ -44,30 +44,51 @@ class SyncService {
     final startTime = DateTime.now();
     
     try {
+      _log('[SYNC] =====================================');
       _log('[SYNC] Starting sync for student: ${student.studentId}');
+      _log('[SYNC] Student ID: ${student.id}');
+      _log('[SYNC] Student Name: ${student.fullName}');
+      _log('[SYNC] Backend URL: ${SyncConfig.backendBaseUrl}');
+      _log('[SYNC] Connection timeout: ${SyncConfig.connectionTimeout}');
+      _log('[SYNC] Receive timeout: ${SyncConfig.receiveTimeout}');
+      _log('[SYNC] =====================================');
       
       // Step 1: Validate inputs
+      _log('[SYNC] Step 1: Validating inputs...');
       await _validateSyncInputs(student, imageFile);
+      _log('[SYNC] ✅ Step 1 complete: Validation passed');
       
       // Step 2: Update local database - syncing
+      _log('[SYNC] Step 2: Updating local database status to "syncing"...');
       await _updateLocalSyncStatus(
         student.id,
         SyncStatus.syncing,
         null,
         null,
       );
+      _log('[SYNC] ✅ Step 2 complete: Database updated');
       
       // Step 3: Build request
+      _log('[SYNC] Step 3: Building request FormData...');
       final formData = await _buildSyncRequest(student, imageFile);
+      _log('[SYNC] ✅ Step 3 complete: FormData ready');
       
       // Step 4: Send to backend
+      _log('[SYNC] Step 4: Sending POST request to backend...');
+      _log('[SYNC] 📡 Attempting connection to: ${SyncConfig.backendBaseUrl}/students/');
       final response = await _sendSyncRequest(formData);
+      _log('[SYNC] ✅ Step 4 complete: Received response ${response.statusCode}');
       
       // Step 5: Handle success response
+      _log('[SYNC] Step 5: Processing success response...');
       final result = await _handleSuccessResponse(student, response, startTime);
+      _log('[SYNC] ✅ Step 5 complete: Sync result ready');
       
-      _log('[SYNC] ✅ Sync completed for ${student.studentId} '
-          '(${DateTime.now().difference(startTime).inMilliseconds}ms)');
+      final duration = DateTime.now().difference(startTime).inMilliseconds;
+      _log('[SYNC] =====================================');
+      _log('[SYNC] ✅ SYNC SUCCESSFUL for ${student.studentId}');
+      _log('[SYNC] Total duration: ${duration}ms');
+      _log('[SYNC] =====================================');
       
       return result;
       
@@ -143,37 +164,52 @@ class SyncService {
 
   /// Validate sync inputs before attempting sync
   Future<void> _validateSyncInputs(Student student, File imageFile) async {
+    _log('[SYNC]   → Checking student ID...');
     // Check student ID is present
     if (student.studentId.isEmpty) {
+      _logError('[SYNC]   ❌ Student ID is empty!');
       throw SyncError(
         type: SyncErrorType.client,
         message: 'Student ID is required',
       );
     }
+    _log('[SYNC]   ✓ Student ID valid: ${student.studentId}');
     
+    _log('[SYNC]   → Checking image file exists...');
+    _log('[SYNC]   → Image path: ${imageFile.path}');
     // Check image file exists
     if (!await imageFile.exists()) {
+      _logError('[SYNC]   ❌ Image file not found at: ${imageFile.path}');
       throw SyncError(
         type: SyncErrorType.file,
         message: 'Image file not found: ${imageFile.path}',
       );
     }
+    _log('[SYNC]   ✓ Image file exists');
     
+    _log('[SYNC]   → Checking image file size...');
     // Check image file size
     final fileSize = await imageFile.length();
+    _log('[SYNC]   → Image size: ${(fileSize / 1024).toStringAsFixed(2)} KB');
     if (!SyncConfig.isImageValid(imageFile.path, fileSize)) {
+      _logError('[SYNC]   ❌ Invalid image: size=${fileSize} bytes, path=${imageFile.path}');
       throw SyncError(
         type: SyncErrorType.file,
         message: 'Invalid image file (check size/format)',
       );
     }
-    
-    _log('[SYNC] Validation passed for ${student.studentId}');
+    _log('[SYNC]   ✓ Image file valid');
   }
 
   /// Build FormData for sync request
   Future<FormData> _buildSyncRequest(Student student, File imageFile) async {
-    _log('[SYNC] Building request for ${student.studentId}');
+    _log('[SYNC]   → Building FormData...');
+    _log('[SYNC]   → Field: student_id = ${student.studentId}');
+    _log('[SYNC]   → Field: name = ${student.fullName}');
+    _log('[SYNC]   → Field: email = ${student.email}');
+    _log('[SYNC]   → Field: department = ${student.department}');
+    _log('[SYNC]   → Field: year = ${student.enrollmentYear ?? 0}');
+    _log('[SYNC]   → Field: image = ${imageFile.path}');
     
     final formData = FormData.fromMap({
       'student_id': student.studentId,
@@ -187,12 +223,17 @@ class SyncService {
       ),
     });
     
+    _log('[SYNC]   ✓ FormData built successfully');
     return formData;
   }
 
   /// Send sync request to backend
   Future<Response> _sendSyncRequest(FormData formData) async {
-    _log('[SYNC] Sending POST to /students/');
+    final fullUrl = '${SyncConfig.backendBaseUrl}/students/';
+    _log('[SYNC]   → Attempting connection...');
+    _log('[SYNC]   → Full URL: $fullUrl');
+    _log('[SYNC]   → Method: POST');
+    _log('[SYNC]   → Content-Type: multipart/form-data');
     
     final response = await _dio.post(
       '/students/',
@@ -204,7 +245,9 @@ class SyncService {
       ),
     );
     
-    _log('[SYNC] Response: ${response.statusCode}');
+    _log('[SYNC]   ✓ Connection successful!');
+    _log('[SYNC]   → Response status: ${response.statusCode}');
+    _log('[SYNC]   → Response data: ${response.data}');
     
     return response;
   }
@@ -244,17 +287,34 @@ class SyncService {
     DioException error,
     DateTime startTime,
   ) async {
-    _logError('[SYNC] ❌ Dio error for ${student.studentId}: ${error.message}');
+    _logError('[SYNC] ❌ Dio error for ${student.studentId}');
+    _logError('[SYNC] Error type: ${error.type}');
+    _logError('[SYNC] Error message: ${error.message}');
+    _logError('[SYNC] Request URL: ${error.requestOptions.uri}');
+    _logError('[SYNC] Request method: ${error.requestOptions.method}');
+    if (error.response != null) {
+      _logError('[SYNC] Response status: ${error.response?.statusCode}');
+      _logError('[SYNC] Response data: ${error.response?.data}');
+    }
     
     SyncErrorType errorType;
     String errorMessage;
     
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
+        errorType = SyncErrorType.network;
+        errorMessage = 'Connection timeout - Could not connect to server within 2 minutes';
+        _logError('[SYNC] 🔴 CONNECTION TIMEOUT: Backend server may not be running or not reachable at ${error.requestOptions.uri}');
+        break;
       case DioExceptionType.receiveTimeout:
+        errorType = SyncErrorType.network;
+        errorMessage = 'Receive timeout - Server took too long to respond';
+        _logError('[SYNC] 🔴 RECEIVE TIMEOUT: Server connected but response too slow');
+        break;
       case DioExceptionType.sendTimeout:
         errorType = SyncErrorType.network;
-        errorMessage = 'Connection timeout';
+        errorMessage = 'Send timeout - Upload took too long';
+        _logError('[SYNC] 🔴 SEND TIMEOUT: Image upload too slow');
         break;
         
       case DioExceptionType.badResponse:

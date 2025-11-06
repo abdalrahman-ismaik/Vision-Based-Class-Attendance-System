@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/student_detail_provider.dart';
 import '../widgets/frame_gallery_grid.dart';
+import '../widgets/student_sync_button.dart';
 import '../../../../shared/domain/entities/student.dart';
 
 /// Screen for viewing detailed student information and frames
@@ -20,6 +21,33 @@ class StudentDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Student Details'),
+        actions: [
+          // Sync button will be shown when student is loaded
+          studentDetail.maybeWhen(
+            data: (detail) {
+              if (detail != null) {
+                // Create a Student entity from StudentDetail for sync button
+                final student = Student(
+                  id: detail.id,
+                  studentId: detail.studentId,
+                  fullName: detail.fullName,
+                  email: detail.email ?? '',
+                  dateOfBirth: detail.dateOfBirth ?? DateTime.now(),
+                  department: detail.department ?? '',
+                  program: detail.program ?? '',
+                  status: detail.status,
+                  createdAt: detail.createdAt,
+                  lastUpdatedAt: detail.lastUpdatedAt,
+                  registrationSessionId: detail.registrationSessionId, // Critical for finding images!
+                );
+                return StudentSyncButton(student: student);
+              }
+              return const SizedBox.shrink();
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: studentDetail.when(
         loading: () => const Center(child: CircularProgressIndicator()),
