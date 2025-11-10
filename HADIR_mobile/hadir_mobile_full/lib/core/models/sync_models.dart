@@ -2,6 +2,7 @@
 /// 
 /// These models define the data structures used during the sync process
 /// between the HADIR mobile app and the backend face processing system.
+library;
 
 /// Sync status enum - represents the current state of a student's sync
 enum SyncStatus {
