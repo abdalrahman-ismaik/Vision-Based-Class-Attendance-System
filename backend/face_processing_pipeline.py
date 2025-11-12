@@ -265,117 +265,244 @@ class EmbeddingGenerator:
 
 
 class FaceClassifier:
-    """Train and use SVM classifier for face recognition"""
+    """Train and use binary classifiers for face recognition - one per student"""
     
     def __init__(self):
-        """Initialize classifier"""
-        self.classifier = SVC(kernel='linear', probability=True, C=1.0)
-        self.label_encoder = LabelEncoder()
+        """Initialize classifier storage"""
+        self.classifiers = {}  # Dict of {student_id: classifier}
+        self.student_ids = []
         self.is_trained = False
     
     def train(self, embeddings, labels):
         """
-        Train classifier on embeddings
+        Train binary classifier for each student
         
         Args:
             embeddings: numpy array of shape (n_samples, embedding_dim)
-            labels: numpy array of shape (n_samples,) - class labels
+            labels: numpy array of shape (n_samples,) - student IDs
         
         Returns:
             dict with training metrics
         """
-        # Encode labels
-        labels_encoded = self.label_encoder.fit_transform(labels)
+        unique_labels = np.unique(labels)
+        self.student_ids = list(unique_labels)
         
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
-            embeddings, labels_encoded, test_size=0.2, random_state=42, stratify=labels_encoded
-        )
+        if len(unique_labels) < 2:
+            raise ValueError("Need at least 2 students to train classifiers")
         
-        # Train classifier
-        logger.info(f"Training classifier on {len(X_train)} samples...")
-        self.classifier.fit(X_train, y_train)
+        logger.info(f"Training binary classifiers for {len(unique_labels)} students...")
         
-        # Evaluate
-        train_pred = self.classifier.predict(X_train)
-        test_pred = self.classifier.predict(X_test)
+        metrics = {
+            'n_students': len(unique_labels),
+            'n_embeddings': len(embeddings),
+            'per_student_metrics': {}
+        }
         
-        train_acc = accuracy_score(y_train, train_pred)
-        test_acc = accuracy_score(y_test, test_pred)
+        # Train one binary classifier per student
+        for student_id in unique_labels:
+            logger.info(f"  Training classifier for {student_id}...")
+            
+            # Create binary labels: 1 for this student, 0 for others
+            binary_labels = (labels == student_id).astype(int)
+            
+            # Count positive and negative samples
+            n_positive = np.sum(binary_labels == 1)
+            n_negative = np.sum(binary_labels == 0)
+            
+            logger.info(f"    Positive samples: {n_positive}, Negative samples: {n_negative}")
+            
+            # Handle class imbalance by adjusting weights
+            # Calculate class weights inversely proportional to class frequencies
+            weight_positive = len(binary_labels) / (2 * n_positive)
+            weight_negative = len(binary_labels) / (2 * n_negative)
+            class_weights = {1: weight_positive, 0: weight_negative}
+            
+            # Split data
+            X_train, X_test, y_train, y_test = train_test_split(
+                embeddings, binary_labels, 
+                test_size=0.2, 
+                random_state=42,
+                stratify=binary_labels  # Maintain class balance in splits
+            )
+            
+            # Train binary SVM classifier with class weights
+            classifier = SVC(
+                kernel='linear', 
+                probability=True, 
+                C=1.0,
+                class_weight=class_weights  # Handle imbalance
+            )
+            classifier.fit(X_train, y_train)
+            
+            # Evaluate
+            train_pred = classifier.predict(X_train)
+            test_pred = classifier.predict(X_test)
+            
+            train_acc = accuracy_score(y_train, train_pred)
+            test_acc = accuracy_score(y_test, test_pred)
+            
+            # Calculate precision, recall, F1 for the positive class
+            from sklearn.metrics import precision_recall_fscore_support
+            test_prec, test_rec, test_f1, _ = precision_recall_fscore_support(
+                y_test, test_pred, pos_label=1, average='binary', zero_division=0
+            )
+            
+            # Store classifier
+            self.classifiers[student_id] = classifier
+            
+            metrics['per_student_metrics'][student_id] = {
+                'train_accuracy': float(train_acc),
+                'test_accuracy': float(test_acc),
+                'test_precision': float(test_prec),
+                'test_recall': float(test_rec),
+                'test_f1': float(test_f1),
+                'n_positive': int(n_positive),
+                'n_negative': int(n_negative),
+                'n_train': len(X_train),
+                'n_test': len(X_test),
+                'class_weight_positive': float(weight_positive),
+                'class_weight_negative': float(weight_negative)
+            }
+            
+            logger.info(f"    Train acc: {train_acc:.3f}, Test acc: {test_acc:.3f}, "
+                       f"Precision: {test_prec:.3f}, Recall: {test_rec:.3f}, F1: {test_f1:.3f}")
         
         self.is_trained = True
         
-        metrics = {
-            'train_accuracy': train_acc,
-            'test_accuracy': test_acc,
-            'n_train': len(X_train),
-            'n_test': len(X_test),
-            'n_classes': len(self.label_encoder.classes_)
-        }
+        # Calculate average metrics
+        avg_test_acc = np.mean([m['test_accuracy'] for m in metrics['per_student_metrics'].values()])
+        avg_test_f1 = np.mean([m['test_f1'] for m in metrics['per_student_metrics'].values()])
         
-        logger.info(f"Training complete: train_acc={train_acc:.3f}, test_acc={test_acc:.3f}")
+        metrics['average_test_accuracy'] = float(avg_test_acc)
+        metrics['average_test_f1'] = float(avg_test_f1)
+        
+        logger.info(f"Training complete: avg_test_acc={avg_test_acc:.3f}, avg_f1={avg_test_f1:.3f}")
         return metrics
     
-    def predict(self, embedding, threshold=0.5):
+    def predict(self, embedding, threshold=0.5, allowed_student_ids=None):
         """
-        Predict class for an embedding
+        Predict using all binary classifiers and return best match
         
         Args:
             embedding: numpy array of shape (embedding_dim,)
+            threshold: Minimum probability threshold for positive prediction
+        
+        Returns:
+            dict with prediction results
+        """
+        if not self.is_trained:
+            raise ValueError("Classifiers not trained yet!")
+        
+        embedding = embedding.reshape(1, -1)
+        
+        # Determine which classifiers to consult
+        if allowed_student_ids is None:
+            iter_classifiers = self.classifiers.items()
+        else:
+            # Filter to allowed students and ignore missing ones
+            iter_classifiers = (
+                (sid, self.classifiers[sid])
+                for sid in allowed_student_ids if sid in self.classifiers
+            )
+
+        # Get predictions from the selected classifiers
+        predictions = {}
+        for student_id, classifier in iter_classifiers:
+            # Predict probability for positive class (this student)
+            proba = classifier.predict_proba(embedding)[0]
+            positive_proba = proba[1] if len(proba) > 1 else proba[0]
+
+            predictions[student_id] = float(positive_proba)
+        
+        if len(predictions) == 0:
+            # No classifiers available in the allowed set
+            return {
+                'label': 'Unknown',
+                'confidence': 0.0,
+                'all_predictions': predictions,
+                'threshold_used': threshold
+            }
+
+        # Find student with highest confidence
+        best_student = max(predictions, key=predictions.get)
+        best_confidence = predictions[best_student]
+        
+        # Check if confidence exceeds threshold
+        if best_confidence < threshold:
+            return {
+                'label': 'Unknown',
+                'confidence': best_confidence,
+                'all_predictions': predictions,
+                'threshold_used': threshold
+            }
+        
+        return {
+            'label': best_student,
+            'confidence': best_confidence,
+            'all_predictions': predictions,
+            'threshold_used': threshold
+        }
+    
+    def predict_student(self, embedding, student_id, threshold=0.5):
+        """
+        Predict if embedding matches a specific student
+        
+        Args:
+            embedding: numpy array of shape (embedding_dim,)
+            student_id: Student ID to check
             threshold: Minimum probability threshold
         
         Returns:
             dict with prediction results
         """
         if not self.is_trained:
-            raise ValueError("Classifier not trained yet!")
+            raise ValueError("Classifiers not trained yet!")
         
-        # Predict
+        if student_id not in self.classifiers:
+            raise ValueError(f"No classifier found for student {student_id}")
+        
         embedding = embedding.reshape(1, -1)
-        label_encoded = self.classifier.predict(embedding)[0]
-        probabilities = self.classifier.predict_proba(embedding)[0]
+        classifier = self.classifiers[student_id]
         
-        max_prob = probabilities.max()
+        # Predict probability for positive class
+        proba = classifier.predict_proba(embedding)[0]
+        positive_proba = proba[1] if len(proba) > 1 else proba[0]
         
-        # Check threshold
-        if max_prob < threshold:
-            return {
-                'label': 'Unknown',
-                'confidence': max_prob,
-                'probabilities': dict(zip(self.label_encoder.classes_, probabilities))
-            }
-        
-        label = self.label_encoder.inverse_transform([label_encoded])[0]
+        is_match = positive_proba >= threshold
         
         return {
-            'label': label,
-            'confidence': max_prob,
-            'probabilities': dict(zip(self.label_encoder.classes_, probabilities))
+            'student_id': student_id,
+            'is_match': bool(is_match),
+            'confidence': float(positive_proba),
+            'threshold_used': threshold
         }
     
     def save(self, filepath):
-        """Save classifier to file"""
+        """Save all classifiers to file"""
         if not self.is_trained:
-            raise ValueError("Classifier not trained yet!")
+            raise ValueError("Classifiers not trained yet!")
+        
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         
         with open(filepath, 'wb') as f:
             pickle.dump({
-                'classifier': self.classifier,
-                'label_encoder': self.label_encoder
+                'classifiers': self.classifiers,
+                'student_ids': self.student_ids
             }, f)
         
-        logger.info(f"Classifier saved to {filepath}")
+        logger.info(f"Classifiers saved to {filepath}")
     
     def load(self, filepath):
-        """Load classifier from file"""
+        """Load classifiers from file"""
         with open(filepath, 'rb') as f:
             data = pickle.load(f)
         
-        self.classifier = data['classifier']
-        self.label_encoder = data['label_encoder']
+        self.classifiers = data['classifiers']
+        self.student_ids = data['student_ids']
         self.is_trained = True
         
-        logger.info(f"Classifier loaded from {filepath}")
+        logger.info(f"Loaded {len(self.classifiers)} classifiers from {filepath}")
 
 
 class FaceProcessingPipeline:
@@ -528,7 +655,7 @@ class FaceProcessingPipeline:
         
         return result
     
-    def recognize_face(self, image_path, threshold=0.5):
+    def recognize_face(self, image_path, threshold=0.5, allowed_student_ids=None):
         """
         Recognize face in an image using trained classifier
         
@@ -570,8 +697,8 @@ class FaceProcessingPipeline:
         # Generate embedding
         embedding = self.embedding_generator.generate_embedding(face_image)
         
-        # Predict
-        prediction = self.classifier.predict(embedding, threshold=threshold)
+    # Predict (optionally restricted to a list of student IDs)
+        prediction = self.classifier.predict(embedding, threshold=threshold, allowed_student_ids=allowed_student_ids)
         
         return {
             'bbox': [x1, y1, x2, y2],
