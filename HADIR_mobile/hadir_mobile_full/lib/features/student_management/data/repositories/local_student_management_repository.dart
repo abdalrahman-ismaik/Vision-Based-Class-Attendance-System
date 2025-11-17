@@ -30,6 +30,7 @@ class LocalStudentManagementRepository implements StudentManagementRepository {
         s.department,
         s.status,
         s.created_at,
+        s.sync_status,
         COUNT(DISTINCT sf.id) as frame_count
       FROM students s
       LEFT JOIN selected_frames sf ON s.registration_session_id = sf.session_id
@@ -59,6 +60,7 @@ class LocalStudentManagementRepository implements StudentManagementRepository {
         s.department,
         s.status,
         s.created_at,
+        s.sync_status,
         COUNT(DISTINCT sf.id) as frame_count
       FROM students s
       LEFT JOIN selected_frames sf ON s.registration_session_id = sf.session_id
@@ -135,6 +137,7 @@ class LocalStudentManagementRepository implements StudentManagementRepository {
         s.department,
         s.status,
         s.created_at,
+        s.sync_status,
         COUNT(DISTINCT sf.id) as frame_count
       FROM students s
       LEFT JOIN selected_frames sf ON s.registration_session_id = sf.session_id

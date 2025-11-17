@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +13,8 @@ import 'package:hadir_mobile_full/features/registration/presentation/widgets/gui
 import 'package:hadir_mobile_full/shared/data/repositories/local_student_repository.dart';
 import 'package:hadir_mobile_full/shared/data/repositories/local_registration_repository.dart';
 import 'package:hadir_mobile_full/shared/data/data_sources/local_database_data_source.dart';
+import 'package:hadir_mobile_full/core/services/backend_registration_service.dart';
+import 'package:hadir_mobile_full/core/providers/backend_providers.dart';
 import 'package:hadir_mobile_full/app/theme/app_colors.dart';
 import 'package:hadir_mobile_full/app/theme/app_spacing.dart';
 import 'package:hadir_mobile_full/app/theme/app_text_styles.dart';
@@ -327,10 +330,81 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         faceEmbeddings: [], // Will be populated by AI augmentation later
       );
 
-      // 2. Save student to database
+      // 2. Save student to local database
       await _studentRepository!.create(student);
 
-      // 3. Create and save registration session
+      // 3. Upload to backend server
+      String backendStatus = '';
+      bool backendSuccess = false;
+      
+      try {
+        // Get backend service
+        final backendService = ref.read(backendRegistrationServiceProvider);
+        
+        // Select best quality image from captured frames
+        if (_capturedFrames.isNotEmpty) {
+          // Find frame with highest quality score
+          final bestFrame = _capturedFrames.reduce((curr, next) => 
+            curr.qualityScore > next.qualityScore ? curr : next
+          );
+          
+          // Update loading dialog to show upload status
+          if (mounted) {
+            Navigator.of(context).pop(); // Close old dialog
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Uploading to server...'),
+                        SizedBox(height: 8),
+                        Text(
+                          'This may take a few moments',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+          
+          // Prepare image file
+          final imageFile = File(bestFrame.imageFilePath);
+          
+          // Upload to backend
+          final result = await backendService.registerStudent(
+            student: student,
+            imageFile: imageFile,
+          );
+          
+          backendSuccess = result.success;
+          backendStatus = result.success 
+            ? '✓ Server: ${result.message ?? "Uploaded successfully"}'
+            : '⚠️ Server: ${result.error ?? "Upload failed"}';
+          
+          print('Backend registration result: ${result.success ? "SUCCESS" : "FAILED"}');
+          if (!result.success) {
+            print('Backend error: ${result.error}');
+          }
+        } else {
+          backendStatus = '⚠️ Server: No images available for upload';
+          print('No captured frames available for backend upload');
+        }
+      } catch (e) {
+        backendStatus = '⚠️ Server: ${e.toString()}';
+        print('Backend upload error: $e');
+      }
+
+      // 4. Create and save registration session
       if (_registrationSessionId != null) {
         final session = RegistrationSession(
           id: _registrationSessionId!,
@@ -401,19 +475,37 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         Navigator.of(context).pop();
       }
 
-      // Show success message
+      // Show success message with backend status
       if (mounted) {
+        final messageColor = backendSuccess ? Colors.green : Colors.orange;
+        final icon = backendSuccess ? Icons.check_circle : Icons.warning;
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('✓ Registration completed successfully!'),
+                Row(
+                  children: [
+                    Icon(icon, color: Colors.white),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text('✓ Saved locally'),
+                    ),
+                  ],
+                ),
+                if (backendStatus.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    backendStatus,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
               ],
             ),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
+            backgroundColor: messageColor,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

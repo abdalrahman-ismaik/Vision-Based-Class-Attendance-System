@@ -9,6 +9,7 @@ class StudentListItem {
   final StudentStatus status;
   final int frameCount;
   final DateTime createdAt;
+  final String syncStatus;
 
   const StudentListItem({
     required this.id,
@@ -18,6 +19,7 @@ class StudentListItem {
     required this.status,
     required this.frameCount,
     required this.createdAt,
+    this.syncStatus = 'not_synced',
   });
 
   /// Create from database map
@@ -33,6 +35,7 @@ class StudentListItem {
       ),
       frameCount: map['frame_count'] as int? ?? 0,
       createdAt: DateTime.parse(map['created_at'] as String),
+      syncStatus: map['sync_status'] as String? ?? 'not_synced',
     );
   }
 
@@ -46,6 +49,13 @@ class StudentListItem {
       'status': status.name,
       'frame_count': frameCount,
       'created_at': createdAt.toIso8601String(),
+      'sync_status': syncStatus,
     };
   }
+  
+  /// Check if student is synced to backend
+  bool get isSynced => syncStatus == 'synced';
+  
+  /// Check if student needs syncing
+  bool get needsSync => syncStatus == 'not_synced' || syncStatus == 'failed';
 }

@@ -51,8 +51,11 @@ class BackendRegistrationService {
   /// 
   /// - Android Emulator: 'http://10.0.2.2:5000/api'
   /// - iOS Simulator: 'http://localhost:5000/api'
-  /// - Physical Device: 'http://YOUR_IP:5000/api'
-  static const String backendBaseUrl = 'http://10.0.2.2:5000/api';
+  /// - Physical Device: 'http://10.10.129.65:5000/api' (your PC's IP)
+  /// 
+  /// Current: Configured for physical device (10.10.129.65)
+  /// Change to 10.0.2.2 if using Android Emulator
+  static const String backendBaseUrl = 'http://10.10.129.65:5000/api';
   
   BackendRegistrationService({Dio? dio})
       : _dio = dio ??

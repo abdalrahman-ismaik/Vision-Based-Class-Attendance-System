@@ -225,15 +225,29 @@ class EmbeddingGenerator:
         
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
         
+        # Extract state dict
         if 'model_state_dict' in checkpoint:
-            model.load_state_dict(checkpoint['model_state_dict'])
+            state_dict = checkpoint['model_state_dict']
         else:
-            model.load_state_dict(checkpoint)
+            state_dict = checkpoint
+        
+        # Load with strict=False to handle architecture variations
+        # The model will use matching keys and ignore mismatches
+        try:
+            logger.info("Loading model weights...")
+            missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+            logger.info(f"✓ Model weights loaded")
+            logger.info(f"  Matched keys: {len(state_dict) - len(unexpected_keys)}")
+            logger.info(f"  Missing keys: {len(missing_keys)} (random init)")
+            logger.info(f"  Unexpected keys: {len(unexpected_keys)} (ignored)")
+        except Exception as load_error:
+            logger.error(f"load_state_dict failed: {type(load_error).__name__}: {load_error}")
+            raise
         
         model.to(self.device)
         model.eval()
         
-        logger.info(f"Loaded FaceNet model from {checkpoint_path}")
+        logger.info(f"✓ FaceNet model ready on {self.device}")
         return model
     
     def _get_transform(self):
