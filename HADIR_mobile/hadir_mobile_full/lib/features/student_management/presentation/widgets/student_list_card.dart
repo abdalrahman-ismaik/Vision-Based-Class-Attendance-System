@@ -24,22 +24,26 @@ class StudentListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: isSelected 
+          ? AppColors.primaryIndigo.withOpacity(0.08)
+          : Colors.white,
         borderRadius: AppRadius.circularMD,
-        side: BorderSide(
+        border: Border.all(
           color: isSelected ? AppColors.primaryIndigo : AppColors.borderLight,
           width: isSelected ? 2 : 1,
         ),
+        boxShadow: isSelected ? AppElevation.shadowMD : AppElevation.shadowSM,
       ),
-      color: isSelected ? AppColors.primaryIndigo.withOpacity(0.05) : AppColors.backgroundWhite,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        borderRadius: AppRadius.circularMD,
-        child: Padding(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          borderRadius: AppRadius.circularMD,
+          child: Padding(
           padding: AppSpacing.paddingMD,
           child: Row(
             children: [
@@ -48,16 +52,24 @@ class StudentListCard extends StatelessWidget {
                 Checkbox(
                   value: isSelected,
                   onChanged: (_) => onTap(),
+                  activeColor: AppColors.primaryIndigo,
                 )
               else
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: _getStatusColor(student.status).withOpacity(0.2),
-                  child: Text(
-                    _getInitials(student.fullName),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: _getStatusColor(student.status),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: _getStatusGradient(student.status),
+                    shape: BoxShape.circle,
+                    boxShadow: AppElevation.shadowSM,
+                  ),
+                  child: Center(
+                    child: Text(
+                      _getInitials(student.fullName),
+                      style: AppTextStyles.headingMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
@@ -70,26 +82,23 @@ class StudentListCard extends StatelessWidget {
                   children: [
                     Text(
                       student.fullName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                      style: AppTextStyles.headingSmall.copyWith(
+                        color: AppColors.textDark,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'ID: ${student.studentId}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textLight,
                       ),
                     ),
                     if (student.department != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         student.department!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: AppColors.textSubtle,
                         ),
                       ),
                     ],
@@ -126,6 +135,7 @@ class StudentListCard extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -135,6 +145,17 @@ class StudentListCard extends StatelessWidget {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
+  }
+
+  Gradient _getStatusGradient(StudentStatus status) {
+    switch (status) {
+      case StudentStatus.registered:
+        return AppColors.successGradient;
+      case StudentStatus.pending:
+        return AppColors.warningGradient;
+      default:
+        return AppColors.primaryGradient;
+    }
   }
 
   Widget _buildStatusChip(StudentStatus status) {

@@ -192,7 +192,7 @@ class SyncService {
     final fileSize = await imageFile.length();
     _log('[SYNC]   → Image size: ${(fileSize / 1024).toStringAsFixed(2)} KB');
     if (!SyncConfig.isImageValid(imageFile.path, fileSize)) {
-      _logError('[SYNC]   ❌ Invalid image: size=${fileSize} bytes, path=${imageFile.path}');
+      _logError('[SYNC]   ❌ Invalid image: size=$fileSize bytes, path=${imageFile.path}');
       throw SyncError(
         type: SyncErrorType.file,
         message: 'Invalid image file (check size/format)',

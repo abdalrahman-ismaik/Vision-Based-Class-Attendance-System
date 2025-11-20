@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/sync_provider.dart';
 import '../../../../shared/domain/entities/student.dart';
 import '../../../../core/models/sync_models.dart';
+import '../../../../app/theme/app_colors.dart';
 
 /// Sync button widget for individual student cards
 /// Shows sync status and allows manual sync trigger
@@ -30,7 +31,7 @@ class StudentSyncButton extends ConsumerWidget {
         height: 24,
         child: CircularProgressIndicator(strokeWidth: 2),
       ),
-      error: (_, __) => const Icon(Icons.error, size: 24, color: Colors.red),
+      error: (_, __) => Icon(Icons.error, size: 24, color: AppColors.warningRed),
     );
   }
 
@@ -38,7 +39,7 @@ class StudentSyncButton extends ConsumerWidget {
     switch (syncStatus) {
       case SyncStatus.notSynced:
         return IconButton(
-          icon: const Icon(Icons.cloud_upload_outlined, color: Colors.grey),
+          icon: Icon(Icons.cloud_upload_outlined, color: AppColors.primaryIndigo),
           tooltip: 'Sync to backend',
           onPressed: () => _handleSync(context, ref),
         );
@@ -52,14 +53,14 @@ class StudentSyncButton extends ConsumerWidget {
       
       case SyncStatus.synced:
         return IconButton(
-          icon: const Icon(Icons.cloud_done, color: Colors.green),
+          icon: Icon(Icons.cloud_done, color: AppColors.successGreen),
           tooltip: 'Synced successfully',
           onPressed: () => _showSyncInfo(context, 'Student synced successfully'),
         );
       
       case SyncStatus.failed:
         return IconButton(
-          icon: const Icon(Icons.cloud_off, color: Colors.red),
+          icon: Icon(Icons.cloud_off, color: AppColors.warningRed),
           tooltip: 'Sync failed - tap to retry',
           onPressed: () => _handleSync(context, ref),
         );
@@ -84,9 +85,9 @@ class StudentSyncButton extends ConsumerWidget {
     if (frames.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('❌ No images available for this student'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.warningRed,
           ),
         );
       }
@@ -102,7 +103,7 @@ class StudentSyncButton extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Image file not found: $imagePath'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.warningRed,
           ),
         );
       }
@@ -162,7 +163,7 @@ class StudentSyncButton extends ConsumerWidget {
                   ),
                 ],
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.successGreen,
               duration: const Duration(seconds: 5),
             ),
           );
@@ -180,7 +181,7 @@ class StudentSyncButton extends ConsumerWidget {
                   ),
                 ],
               ),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.warningRed,
               duration: const Duration(seconds: 7),
               action: SnackBarAction(
                 label: 'Retry',
@@ -202,7 +203,7 @@ class StudentSyncButton extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Unexpected error: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.warningRed,
             duration: const Duration(seconds: 5),
           ),
         );

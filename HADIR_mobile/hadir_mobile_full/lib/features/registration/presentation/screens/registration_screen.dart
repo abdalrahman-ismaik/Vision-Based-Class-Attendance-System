@@ -13,7 +13,6 @@ import 'package:hadir_mobile_full/features/registration/presentation/widgets/gui
 import 'package:hadir_mobile_full/shared/data/repositories/local_student_repository.dart';
 import 'package:hadir_mobile_full/shared/data/repositories/local_registration_repository.dart';
 import 'package:hadir_mobile_full/shared/data/data_sources/local_database_data_source.dart';
-import 'package:hadir_mobile_full/core/services/backend_registration_service.dart';
 import 'package:hadir_mobile_full/core/providers/backend_providers.dart';
 import 'package:hadir_mobile_full/app/theme/app_colors.dart';
 import 'package:hadir_mobile_full/app/theme/app_spacing.dart';
@@ -26,11 +25,9 @@ import 'package:hadir_mobile_full/app/theme/app_text_styles.dart';
 /// Step 2: Guided 5-Pose Capture (Frontal, Left, Right, Up, Down)
 /// Step 3: Completion Summary
 class RegistrationScreen extends ConsumerStatefulWidget {
-  final bool developmentMode;
   
   const RegistrationScreen({
     super.key,
-    this.developmentMode = false,
   });
 
   @override
@@ -107,28 +104,6 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
     
     // Initialize repositories
     _initializeRepositories();
-    
-    // Pre-fill form with mock data in development mode
-    if (widget.developmentMode) {
-      _prefillMockData();
-    }
-  }
-  
-  /// Pre-fill the registration form with mock data for development
-  void _prefillMockData() {
-    // Student ID: Only the 5 digits after 1000 prefix
-    _studentIdController.text = '12345';
-    _firstNameController.text = 'John';
-    _lastNameController.text = 'Doe';
-    // Email is auto-generated from student ID (100012345@ku.ac.ae)
-    _emailController.text = '100012345@ku.ac.ae';
-    _phoneController.text = '+971501234567';
-    _majorController.text = 'Computer Science';
-    _nationalityController.text = 'United Arab Emirates';
-    _selectedDateOfBirth = DateTime(2000, 1, 15);
-    _selectedGender = Gender.male;
-    _selectedAcademicLevel = AcademicLevel.undergraduate;
-    _selectedEnrollmentYear = 2024;
   }
 
   Future<void> _initializeRepositories() async {
@@ -220,8 +195,12 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         // Check if student ID already exists
         final fullStudentId = '1000${_studentIdController.text}';
         
+        print('[REGISTRATION] Checking if student ID exists: $fullStudentId');
+        
         try {
           final studentExists = await _studentRepository!.existsByStudentId(fullStudentId);
+          
+          print('[REGISTRATION] Student exists check result: $studentExists');
           
           if (studentExists) {
             if (mounted) {
@@ -237,13 +216,39 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
           }
           
           // Student doesn't exist, proceed to next step
+          print('[REGISTRATION] Student ID is available, proceeding to next step');
           _goToNextStep();
-        } catch (e) {
+        } catch (e, stackTrace) {
+          print('[REGISTRATION] Error checking student ID: $e');
+          print('[REGISTRATION] Stack trace: $stackTrace');
+          
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Error checking student ID: $e'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Database Error',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text('$e'),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Try: Settings → Tap 5x → Database Fix Tool',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
                 backgroundColor: Colors.red,
+                duration: const Duration(seconds: 6),
+                action: SnackBarAction(
+                  label: 'OK',
+                  textColor: Colors.white,
+                  onPressed: () {},
+                ),
               ),
             );
           }
@@ -975,7 +980,8 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
               label: 'Student ID',
               icon: Icons.badge,
               prefixText: '1000',
-              helperText: 'Enter the last 5 digits (e.g., 64692)',
+              hintText: '64692',
+              helperText: 'Enter the last 5 digits',
               keyboardType: TextInputType.number,
               maxLength: 5,
               onChanged: (value) {
@@ -1102,6 +1108,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   controller: _majorController,
                   label: 'Major/Program',
                   icon: Icons.school,
+                  hintText: 'Computer Science',
                   helperText: 'Type to search Khalifa University programs',
                   onChanged: (query) {
                     setState(() {

@@ -141,6 +141,10 @@ class LocalDatabaseDataSource {
         face_embeddings TEXT,
         created_at TEXT NOT NULL,
         last_updated_at TEXT,
+        sync_status TEXT DEFAULT 'not_synced',
+        backend_student_id TEXT,
+        sync_error TEXT,
+        last_sync_attempt TEXT,
         FOREIGN KEY (registration_session_id) REFERENCES registration_sessions (id)
       )
     ''');
@@ -218,6 +222,8 @@ class LocalDatabaseDataSource {
     await db.execute('CREATE INDEX idx_students_email ON students (email)');
     await db.execute('CREATE INDEX idx_students_status ON students (status)');
     await db.execute('CREATE INDEX idx_students_department ON students (department)');
+    await db.execute('CREATE INDEX idx_students_sync_status ON students (sync_status)');
+    await db.execute('CREATE INDEX idx_students_backend_id ON students (backend_student_id)');
     
     // Administrators indices
     await db.execute('CREATE INDEX idx_administrators_username ON administrators (username)');

@@ -9,6 +9,7 @@ class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      scaffoldBackgroundColor: surfaceColor,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         brightness: Brightness.light,
@@ -54,9 +55,10 @@ class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
+      scaffoldBackgroundColor: surfaceColor,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
-        brightness: Brightness.dark,
+        brightness: Brightness.light,
       ),
       appBarTheme: const AppBarTheme(
         elevation: 0,

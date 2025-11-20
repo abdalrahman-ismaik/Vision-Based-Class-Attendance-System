@@ -4,6 +4,9 @@ import '../providers/student_detail_provider.dart';
 import '../widgets/frame_gallery_grid.dart';
 import '../widgets/student_sync_button.dart';
 import '../../../../shared/domain/entities/student.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/app_text_styles.dart';
+import '../../../../app/theme/app_spacing.dart';
 
 /// Screen for viewing detailed student information and frames
 class StudentDetailScreen extends ConsumerWidget {
@@ -19,8 +22,18 @@ class StudentDetailScreen extends ConsumerWidget {
     final studentDetail = ref.watch(studentDetailProvider(studentId));
 
     return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text('Student Details'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: AppColors.primaryGradient,
+          ),
+        ),
+        title: Text(
+          'Student Details',
+          style: AppTextStyles.headingLarge.copyWith(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           // Sync button will be shown when student is loaded
           studentDetail.maybeWhen(
@@ -120,18 +133,27 @@ class StudentDetailScreen extends ConsumerWidget {
   Widget _buildStudentHeader(BuildContext context, dynamic detail) {
     return Container(
       padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF9FAFB),
+      ),
       child: Row(
         children: [
           // Avatar
-          CircleAvatar(
-            radius: 40,
-            backgroundColor: _getStatusColor(detail.status).withOpacity(0.2),
-            child: Text(
-              _getInitials(detail.fullName),
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: _getStatusColor(detail.status),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              gradient: _getStatusGradient(detail.status),
+              shape: BoxShape.circle,
+              boxShadow: AppElevation.shadowMD,
+            ),
+            child: Center(
+              child: Text(
+                _getInitials(detail.fullName),
+                style: AppTextStyles.displaySmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),
@@ -144,17 +166,15 @@ class StudentDetailScreen extends ConsumerWidget {
               children: [
                 Text(
                   detail.fullName,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                  style: AppTextStyles.displaySmall.copyWith(
+                    color: AppColors.textDark,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'ID: ${detail.studentId}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade600,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: AppColors.textLight,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -173,11 +193,10 @@ class StudentDetailScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Information',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.headingLarge.copyWith(
+              color: AppColors.textDark,
             ),
           ),
           const SizedBox(height: 16),
@@ -209,12 +228,25 @@ class StudentDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundLight,
+        borderRadius: AppRadius.circularMD,
+        border: Border.all(color: AppColors.borderLight),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.grey.shade600),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: AppRadius.circularSM,
+            ),
+            child: Icon(icon, size: 18, color: Colors.white),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -222,17 +254,16 @@ class StudentDetailScreen extends ConsumerWidget {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.textLight,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: AppColors.textDark,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -244,18 +275,20 @@ class StudentDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildFramesSection(BuildContext context, dynamic detail) {
-    return Padding(
+    return Container(
       padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'Captured Frames',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                style: AppTextStyles.headingLarge.copyWith(
+                  color: AppColors.textDark,
                 ),
               ),
               const Spacer(),
@@ -336,6 +369,17 @@ class StudentDetailScreen extends ConsumerWidget {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
+  }
+
+  Gradient _getStatusGradient(StudentStatus status) {
+    switch (status) {
+      case StudentStatus.registered:
+        return AppColors.successGradient;
+      case StudentStatus.pending:
+        return AppColors.warningGradient;
+      default:
+        return AppColors.primaryGradient;
+    }
   }
 
   Color _getStatusColor(StudentStatus status) {

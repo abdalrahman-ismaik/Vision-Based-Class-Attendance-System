@@ -22,7 +22,7 @@ class SyncConfig {
   /// - Production: 'https://api.hadir.edu/api'
   static const String backendBaseUrl = String.fromEnvironment(
     'BACKEND_URL',
-    defaultValue: 'http://172.18.103.83:5000/api', // Using physical IP (backend shows: Running on http://172.18.103.83:5000)
+    defaultValue: 'http://10.215.149.56:5000/api', // Physical Device: Use computer's network IP
   );
   
   /// Backend API version

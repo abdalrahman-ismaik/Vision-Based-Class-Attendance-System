@@ -57,25 +57,35 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
     final unsentStudents = state.students.where((s) => s.needsSync).toList();
 
     return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: Text(_isSelectionMode 
-          ? '${_selectedStudentIds.length} selected' 
-          : 'Registered Students'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: AppColors.primaryGradient,
+          ),
+        ),
+        title: Text(
+          _isSelectionMode 
+            ? '${_selectedStudentIds.length} selected' 
+            : 'Registered Students',
+          style: AppTextStyles.headingLarge.copyWith(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         leading: _isSelectionMode
             ? IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close, color: Colors.white),
                 onPressed: _exitSelectionMode,
               )
             : null,
         actions: _isSelectionMode
             ? [
                 IconButton(
-                  icon: const Icon(Icons.select_all),
+                  icon: const Icon(Icons.select_all, color: Colors.white),
                   onPressed: _selectAllUnsentStudents,
                   tooltip: 'Select all unsent',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.cloud_upload),
+                  icon: const Icon(Icons.cloud_upload, color: Colors.white),
                   onPressed: _selectedStudentIds.isEmpty ? null : _uploadSelectedStudents,
                   tooltip: 'Upload selected',
                 ),
@@ -86,7 +96,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                   IconButton(
                     icon: Badge(
                       label: Text('${unsentStudents.length}'),
-                      child: const Icon(Icons.cloud_upload),
+                      child: const Icon(Icons.cloud_upload, color: Colors.white),
                     ),
                     onPressed: () => _showUploadOptions(context, unsentStudents),
                     tooltip: 'Upload to backend',
@@ -103,7 +113,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                   icon: Badge(
                     isLabelVisible: state.filter.hasActiveFilters,
                     label: Text('${state.filter.activeFilterCount}'),
-                    child: const Icon(Icons.filter_list),
+                    child: const Icon(Icons.filter_list, color: Colors.white),
                   ),
                   onPressed: () => _showFilterSheet(context),
                 ),
@@ -144,43 +154,59 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
     
     return Container(
       padding: AppSpacing.paddingMD,
-      decoration: BoxDecoration(
-        color: AppColors.backgroundLight,
-        border: Border(bottom: BorderSide(color: AppColors.borderLight)),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF9FAFB), Colors.white],
+        ),
       ),
       child: Row(
         children: [
-          _buildStatChip('Total', total, AppColors.primaryIndigo),
-          const SizedBox(width: AppSpacing.sm),
-          _buildStatChip(
-            'Registered', 
-            byStatus['registered'] ?? 0, 
-            AppColors.successGreen,
+          Expanded(
+            child: _buildStatCard('Total', total, AppColors.primaryGradient, Icons.people),
           ),
           const SizedBox(width: AppSpacing.sm),
-          _buildStatChip(
-            'Pending', 
-            byStatus['pending'] ?? 0, 
-            AppColors.warningAmber,
+          Expanded(
+            child: _buildStatCard('Registered', byStatus['registered'] ?? 0, AppColors.successGradient, Icons.check_circle),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: _buildStatCard('Pending', byStatus['pending'] ?? 0, AppColors.warningGradient, Icons.pending),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatChip(String label, int count, Color color) {
-    return Chip(
-      label: Text(
-        '$label: $count',
-        style: AppTextStyles.labelSmall.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
+  Widget _buildStatCard(String label, int count, Gradient gradient, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: AppRadius.circularMD,
+        boxShadow: AppElevation.shadowSM,
       ),
-      backgroundColor: color.withOpacity(0.1),
-      side: BorderSide.none,
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(height: 4),
+          Text(
+            '$count',
+            style: AppTextStyles.headingLarge.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            label,
+            style: AppTextStyles.labelSmall.copyWith(
+              color: Colors.white.withOpacity(0.9),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -191,30 +217,33 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
 
     if (state.error != null && state.students.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: AppColors.warningRed),
-            const SizedBox(height: AppSpacing.md),
-            Padding(
-              padding: AppSpacing.paddingHorizontalLG,
-              child: Text(
-                state.error!,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.warningRed,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: AppColors.warningRed),
+              const SizedBox(height: AppSpacing.md),
+              Padding(
+                padding: AppSpacing.paddingHorizontalLG,
+                child: Text(
+                  state.error!,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.warningRed,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ElevatedButton.icon(
-              onPressed: () {
-                ref.read(studentListProvider.notifier).refresh();
-              },
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
+              const SizedBox(height: AppSpacing.md),
+              ElevatedButton.icon(
+                onPressed: () {
+                  ref.read(studentListProvider.notifier).refresh();
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       );
     }

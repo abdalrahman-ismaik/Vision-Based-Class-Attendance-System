@@ -5,17 +5,19 @@ import '../../data/models/student_sort_option.dart';
 class StudentSortMenu extends StatelessWidget {
   final StudentSortOption currentSort;
   final ValueChanged<StudentSortOption> onSortChanged;
+  final Color? iconColor;
 
   const StudentSortMenu({
     super.key,
     required this.currentSort,
     required this.onSortChanged,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<StudentSortOption>(
-      icon: const Icon(Icons.sort),
+      icon: Icon(Icons.sort, color: iconColor),
       tooltip: 'Sort students',
       onSelected: onSortChanged,
       itemBuilder: (context) => [

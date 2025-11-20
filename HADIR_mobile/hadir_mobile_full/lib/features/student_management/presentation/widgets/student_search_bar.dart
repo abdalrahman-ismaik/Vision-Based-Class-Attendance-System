@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/app_spacing.dart';
 
 /// Search bar widget with debounce
 class StudentSearchBar extends StatefulWidget {
@@ -45,20 +47,22 @@ class _StudentSearchBarState extends State<StudentSearchBar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+      padding: AppSpacing.paddingMD,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.white, Color(0xFFF9FAFB)],
+        ),
       ),
       child: TextField(
         controller: _controller,
         onChanged: _onSearchChanged,
         decoration: InputDecoration(
           hintText: 'Search by name, ID, or email...',
-          prefixIcon: const Icon(Icons.search),
+          hintStyle: TextStyle(color: AppColors.textSubtle),
+          prefixIcon: Icon(Icons.search, color: AppColors.primaryIndigo),
           suffixIcon: _controller.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear),
+                  icon: Icon(Icons.clear, color: AppColors.textLight),
                   onPressed: () {
                     _controller.clear();
                     widget.onClear();
@@ -66,19 +70,19 @@ class _StudentSearchBarState extends State<StudentSearchBar> {
                 )
               : null,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderRadius: AppRadius.circularMD,
+            borderSide: BorderSide(color: AppColors.borderLight),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderRadius: AppRadius.circularMD,
+            borderSide: BorderSide(color: AppColors.borderLight),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Theme.of(context).primaryColor),
+            borderRadius: AppRadius.circularMD,
+            borderSide: BorderSide(color: AppColors.primaryIndigo, width: 2),
           ),
           filled: true,
-          fillColor: Colors.grey.shade50,
+          fillColor: AppColors.backgroundWhite,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),

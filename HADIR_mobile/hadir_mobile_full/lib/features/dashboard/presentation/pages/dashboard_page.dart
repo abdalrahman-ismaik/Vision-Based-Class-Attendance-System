@@ -3,13 +3,105 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../student_management/presentation/pages/database_fix_page.dart';
+import '../../../student_management/presentation/pages/database_inspector_page.dart';
 
 /// Dashboard page for the HADIR Mobile application
 /// 
 /// This is the main screen that users see after logging in.
 /// It provides navigation to all major features and shows quick stats.
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  int _settingsTapCount = 0;
+
+  void _onSettingsTap() {
+    setState(() {
+      _settingsTapCount++;
+    });
+
+    // Reset counter after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _settingsTapCount = 0;
+        });
+      }
+    });
+
+    // Show developer menu after 5 taps
+    if (_settingsTapCount >= 5) {
+      _showDeveloperMenu();
+      setState(() {
+        _settingsTapCount = 0;
+      });
+    }
+  }
+
+  void _showDeveloperMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '🔧 Developer Menu',
+              style: AppTextStyles.headingLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.build),
+              title: const Text('Database Fix Tool'),
+              subtitle: const Text('Fix database migration issues'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DatabaseFixPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.search),
+              title: const Text('Database Inspector'),
+              subtitle: const Text('View database schema and test queries'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DatabaseInspectorPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.info),
+              title: const Text('About'),
+              subtitle: const Text('App version and info'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('HADIR v1.0.0')),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,11 +148,7 @@ class DashboardPage extends StatelessWidget {
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.settings, color: Colors.white, size: 24),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Settings - Coming Soon')),
-                          );
-                        },
+                        onPressed: _onSettingsTap,
                       ),
                     ),
                   ],

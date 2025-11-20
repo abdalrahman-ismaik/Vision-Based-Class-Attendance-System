@@ -23,9 +23,9 @@ final authRouterProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
 
-      // If authenticated and on login page, redirect to registration
+      // If authenticated and on login page, redirect to dashboard
       if (isAuthenticated && isLoggingIn) {
-        return '/registration';
+        return '/dashboard';
       }
 
       // No redirect needed
@@ -66,8 +66,8 @@ final authRouterProvider = Provider<GoRouter>((ref) {
 
 /// Simple router without authentication (for initial setup)
 final simpleRouter = GoRouter(
-  // In development mode, start directly at registration screen
-  initialLocation: kDevelopmentMode ? '/registration' : '/login',
+  // In development mode, start directly at dashboard screen
+  initialLocation: kDevelopmentMode ? '/dashboard' : '/login',
   routes: [
     GoRoute(
       path: '/login',
@@ -75,9 +75,7 @@ final simpleRouter = GoRouter(
     ),
     GoRoute(
       path: '/registration',
-      builder: (context, state) => const RegistrationScreen(
-        developmentMode: kDevelopmentMode,
-      ),
+      builder: (context, state) => const RegistrationScreen(),
     ),
     GoRoute(
       path: '/dashboard',
@@ -96,7 +94,7 @@ final simpleRouter = GoRouter(
     ),
     GoRoute(
       path: '/',
-      redirect: (context, state) => kDevelopmentMode ? '/registration' : '/login',
+      redirect: (context, state) => kDevelopmentMode ? '/dashboard' : '/login',
     ),
   ],
 );
