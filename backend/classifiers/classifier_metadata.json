@@ -1,8 +1,8 @@
 {
-  "trained_at": "2025-10-20T20:39:58.631000",
-  "n_students": 2,
-  "n_embeddings": 40,
+  "trained_at": "2025-11-21T23:55:20.792777",
+  "n_students": 3,
+  "n_embeddings": 60,
   "train_accuracy": 1.0,
   "test_accuracy": 1.0,
-  "classifier_path": "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/classifiers/face_classifier.pkl"
+  "classifier_path": "C:\\Users\\hp\\Vision-Based-Class-Attendance-System\\backend\\classifiers\\face_classifier.pkl"
 }

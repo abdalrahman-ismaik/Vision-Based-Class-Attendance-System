@@ -19,7 +19,7 @@ class FaceTracker:
             max_disappeared: Frames before removing disappeared face
         """
         self.next_id = 0
-        self.faces: Dict[int, Dict] = {}  # {face_id: {bbox, label, disappeared}}
+        self.faces: Dict[int, Dict] = {}  # {face_id: {bbox, label, confidence, disappeared}}
         self.iou_threshold = iou_threshold
         self.max_disappeared = max_disappeared
     
@@ -89,6 +89,7 @@ class FaceTracker:
                 results[best_match_id] = {
                     'bbox': det_bbox,
                     'label': self.faces[best_match_id]['label'],
+                    'confidence': self.faces[best_match_id].get('confidence', 0.0),
                     'is_new': False
                 }
             else:
@@ -96,15 +97,17 @@ class FaceTracker:
                 new_id = self.next_id
                 self.next_id += 1
                 label = f"face{new_id + 1}"  # face1, face2, face3, etc.
-                
+
                 self.faces[new_id] = {
                     'bbox': det_bbox,
                     'label': label,
+                    'confidence': 0.0,
                     'disappeared': 0
                 }
                 results[new_id] = {
                     'bbox': det_bbox,
                     'label': label,
+                    'confidence': 0.0,
                     'is_new': True
                 }
         
@@ -115,4 +118,10 @@ class FaceTracker:
             del self.faces[face_id]
         
         return results
+
+    def set_label(self, face_id: int, label: str, confidence: float = 0.0):
+        """Update label/confidence for a tracked face."""
+        if face_id in self.faces:
+            self.faces[face_id]['label'] = label
+            self.faces[face_id]['confidence'] = confidence
 

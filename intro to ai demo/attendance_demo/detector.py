@@ -92,10 +92,6 @@ class FaceDetector:
                 # Ensure coordinates are within image bounds
                 x = max(0, x)
                 y = max(0, y)
-                w = min(w, w - x) # This looks wrong, w should be constrained by image width
-                h = min(h, h - y) # This looks wrong too
-                
-                # Correct boundary checks
                 w = min(w, image.shape[1] - x)
                 h = min(h, image.shape[0] - y)
                 

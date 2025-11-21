@@ -1027,6 +1027,6 @@ if __name__ == '__main__':
     logger.info("Starting Vision-Based Attendance API...")
     logger.info(f"Upload folder: {UPLOAD_FOLDER}")
     logger.info(f"Database file: {DATABASE_FILE}")
-    logger.info("Swagger UI available at: http://localhost:5000/api/docs")
+    logger.info("Swagger UI available at: http://localhost:5001/api/docs")
     
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5001)
