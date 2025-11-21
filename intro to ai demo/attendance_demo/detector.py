@@ -2,54 +2,65 @@
 detector.py
 ------------
 
-This module contains a simple face detector using OpenCV's Haar cascade.
-It wraps the cascade classifier in a class that exposes a single method
-``detect`` returning bounding boxes for all detected faces in a given
-image.  Each bounding box is a tuple ``(x, y, w, h)`` in pixel
-coordinates relative to the input image.
+This module contains a face detector using OpenCV's YuNet (FaceDetectorYN).
+YuNet is a lightweight, fast, and accurate face detector that runs efficiently on CPU.
 
-The Haar cascade is not state‑of‑the‑art but is included with OpenCV and
-requires no additional downloads.  For improved detection accuracy you
-could replace this with a more modern detector such as RetinaFace,
-MediaPipe Face Detection, or YOLOv8‑face.
+Each bounding box is a tuple ``(x, y, w, h)`` in pixel coordinates relative to the input image.
 """
 
 from __future__ import annotations
 
 import cv2
+import numpy as np
+import os
 from typing import List, Tuple
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FaceDetector:
-    """Detect faces in an image using a Haar cascade classifier."""
+    """Detect faces in an image using OpenCV YuNet."""
 
-    def __init__(self, scale_factor: float = 1.1, min_neighbors: int = 5, min_size: Tuple[int, int] = (30, 30)) -> None:
-        """Initialise the face detector.
+    def __init__(self, model_path: str = "face_detection_yunet_2023mar.onnx", 
+                 score_threshold: float = 0.6,
+                 nms_threshold: float = 0.3,
+                 top_k: int = 5000) -> None:
+        """Initialize the face detector.
 
         Parameters
         ----------
-        scale_factor : float, optional
-            Parameter specifying how much the image size is reduced at
-            each image scale.  See OpenCV's ``detectMultiScale`` for
-            details.  Lower values yield more accurate but slower
-            detection.
-        min_neighbors : int, optional
-            Parameter specifying how many neighbours each candidate
-            rectangle should have to retain it.  Higher values reduce
-            false positives.
-        min_size : tuple of int, optional
-            Minimum possible object size.  Objects smaller than this are
-            ignored.
+        model_path : str
+            Path to the .onnx model file.
+        score_threshold : float
+            Filter out faces with confidence < score_threshold.
+        nms_threshold : float
+            Suppress bounding boxes with IoU > nms_threshold.
+        top_k : int
+            Keep top_k bounding boxes before NMS.
         """
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        self.classifier = cv2.CascadeClassifier(cascade_path)
-        if self.classifier.empty():
-            raise IOError(f"Failed to load Haar cascade from {cascade_path}")
-        self.scale_factor = scale_factor
-        self.min_neighbors = min_neighbors
-        self.min_size = min_size
+        # Locate model file relative to this script if just filename is given
+        if not os.path.isabs(model_path):
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            model_path = os.path.join(current_dir, model_path)
+            
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(
+                f"YuNet model not found at {model_path}. \n"
+                "Please download it from: https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
+            )
+            
+        self.detector = cv2.FaceDetectorYN.create(
+            model=model_path,
+            config="",
+            input_size=(320, 320), # Initial size, will be updated per frame
+            score_threshold=score_threshold,
+            nms_threshold=nms_threshold,
+            top_k=top_k
+        )
+        logger.info(f"Face detector initialized with YuNet (threshold={score_threshold})")
 
-    def detect(self, image) -> List[Tuple[int, int, int, int]]:
+    def detect(self, image: np.ndarray) -> List[Tuple[int, int, int, int]]:
         """Run face detection on the provided image.
 
         Parameters
@@ -62,14 +73,33 @@ class FaceDetector:
         List[Tuple[int, int, int, int]]
             A list of bounding boxes, where each box is ``(x, y, w, h)``.
         """
-        # Convert to grayscale as Haar cascades work on single channel images
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        faces = self.classifier.detectMultiScale(
-            gray,
-            scaleFactor=self.scale_factor,
-            minNeighbors=self.min_neighbors,
-            minSize=self.min_size,
-            flags=cv2.CASCADE_SCALE_IMAGE,
-        )
-        # Convert to Python list of tuples for consistency
-        return [(int(x), int(y), int(w), int(h)) for (x, y, w, h) in faces]
+        h, w, _ = image.shape
+        
+        # Update input size for the current frame
+        self.detector.setInputSize((w, h))
+        
+        # Run detection
+        # results is a tuple: (conf, faces)
+        _, faces = self.detector.detect(image)
+        
+        bboxes = []
+        if faces is not None:
+            for face in faces:
+                # YuNet returns [x, y, w, h, x_re, y_re, x_le, y_le, x_nt, y_nt, x_rcm, y_rcm, x_lcm, y_lcm, score]
+                # We just need the bounding box
+                x, y, w, h = face[:4].astype(int)
+                
+                # Ensure coordinates are within image bounds
+                x = max(0, x)
+                y = max(0, y)
+                w = min(w, w - x) # This looks wrong, w should be constrained by image width
+                h = min(h, h - y) # This looks wrong too
+                
+                # Correct boundary checks
+                w = min(w, image.shape[1] - x)
+                h = min(h, image.shape[0] - y)
+                
+                if w > 0 and h > 0:
+                    bboxes.append((x, y, w, h))
+        
+        return bboxes

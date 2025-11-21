@@ -29,18 +29,11 @@ import cv2
 from flask import Flask, render_template, Response
 
 from attendance_demo.detector import FaceDetector
-from attendance_demo.custom_embedder import embed_face
-from attendance_demo.gallery_utils import load_gallery, match_embedding
+from attendance_demo.face_tracker import FaceTracker
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the attendance demo web server.")
-    parser.add_argument(
-        '--gallery',
-        type=str,
-        default=str(Path(__file__).resolve().parents[0] / 'gallery.npz'),
-        help='Path to the gallery npz file created by enroll.py.',
-    )
+    parser = argparse.ArgumentParser(description="Run the attendance demo web server with face tracking.")
     parser.add_argument(
         '--video_source',
         type=str,
@@ -64,42 +57,95 @@ def parse_args() -> argparse.Namespace:
 
 def open_video_source(src: str) -> cv2.VideoCapture:
     """Open a video capture from a camera index or file/stream path."""
+    print(f"Attempting to open video source: {src}")
     if src.isdigit():
-        cap = cv2.VideoCapture(int(src))
+        cap = cv2.VideoCapture(int(src), cv2.CAP_DSHOW) # Use DirectShow on Windows for faster opening
+        if not cap.isOpened():
+             # Fallback to default backend
+             print(f"Failed to open with CAP_DSHOW, trying default backend...")
+             cap = cv2.VideoCapture(int(src))
     else:
         cap = cv2.VideoCapture(src)
+    
     if not cap.isOpened():
         raise IOError(f"Failed to open video source {src}")
+    
+    # Try to set resolution to something standard
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    
+    print(f"Successfully opened video source: {src}")
     return cap
 
 
-def create_app(gallery_path: Path, video_source: str) -> Flask:
+def create_app(video_source: str) -> Flask:
     app = Flask(__name__, template_folder='templates')
-    # Load gallery once at startup
-    embeddings, labels = load_gallery(str(gallery_path))
+    # Initialize face detector and tracker
     detector = FaceDetector()
+    tracker = FaceTracker(iou_threshold=0.3, max_disappeared=10)
     cap = open_video_source(video_source)
 
     def gen_frames() -> Generator[bytes, None, None]:
+        frame_count = 0
         while True:
             success, frame = cap.read()
             if not success or frame is None:
-                break
-            # Detect faces and annotate
-            faces = detector.detect(frame)
-            for (x, y, w, h) in faces:
-                pad = int(0.1 * max(w, h))
-                x0 = max(x - pad, 0)
-                y0 = max(y - pad, 0)
-                x1 = min(x + w + pad, frame.shape[1])
-                y1 = min(y + h + pad, frame.shape[0])
-                face_crop = frame[y0:y1, x0:x1]
-                embedding = embed_face(face_crop)
-                label, score = match_embedding(embedding, embeddings, labels)
-                # Draw bounding box and label
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                text = label if label != 'unknown' else 'Unknown'
-                cv2.putText(frame, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                # Try to reconnect to camera if stream is lost
+                print("Lost connection to camera, trying to reconnect...")
+                cap.release()
+                if video_source.isdigit():
+                    cap.open(int(video_source), cv2.CAP_DSHOW)
+                else:
+                    cap.open(video_source)
+                
+                if not cap.isOpened():
+                    print("Failed to reconnect to camera.")
+                    break
+                continue
+            
+            frame_count += 1
+            
+            # Optimization: Resize frame for faster detection
+            # Detect on a smaller image (e.g., 320px width)
+            height, width = frame.shape[:2]
+            scale_factor = 0.5  # Downscale to 50%
+            small_frame = cv2.resize(frame, None, fx=scale_factor, fy=scale_factor)
+            
+            # Detect faces on small frame
+            small_faces = detector.detect(small_frame)
+            
+            # Scale bounding boxes back up
+            faces = []
+            for (x, y, w, h) in small_faces:
+                faces.append((
+                    int(x / scale_factor),
+                    int(y / scale_factor),
+                    int(w / scale_factor),
+                    int(h / scale_factor)
+                ))
+            
+            # Update tracker
+            tracked_faces = tracker.update(faces)
+            
+            # Draw bounding boxes and labels for tracked faces
+            for face_id, face_data in tracked_faces.items():
+                x, y, w, h = face_data['bbox']
+                label = face_data['label']
+                
+                # Color: green for tracked faces
+                color = (0, 255, 0)
+                
+                # Draw bounding box
+                cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
+                
+                # Draw label background
+                text = label
+                (text_w, text_h), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+                cv2.rectangle(frame, (x, y - text_h - 10), (x + text_w, y), color, -1)
+                
+                # Draw label text
+                cv2.putText(frame, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            
             # Encode as JPEG
             ret, buffer = cv2.imencode('.jpg', frame)
             if not ret:
@@ -123,11 +169,9 @@ def create_app(gallery_path: Path, video_source: str) -> Flask:
 
 def main() -> None:
     args = parse_args()
-    gallery_path = Path(args.gallery)
-    if not gallery_path.exists():
-        raise FileNotFoundError(f"Gallery file does not exist: {gallery_path}")
-    app = create_app(gallery_path, args.video_source)
-    print(f"Starting server on {args.host}:{args.port}")
+    app = create_app(args.video_source)
+    print(f"Starting face tracking server on {args.host}:{args.port}")
+    print("Open http://{}:{}/ in your browser".format(args.host, args.port))
     app.run(host=args.host, port=args.port, threaded=True)
 
 

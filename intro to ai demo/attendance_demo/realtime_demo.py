@@ -2,20 +2,15 @@
 realtime_demo.py
 -----------------
 
-Launch a real‑time class attendance demo using the components provided
-in this package.  This script captures video from a camera or file,
-detects faces, computes embeddings using your model (via
-``custom_embedder.embed_face``), matches them against a precomputed
-gallery, and overlays bounding boxes and names on the video frames.
+Launch a real‑time class attendance demo with face tracking.
+Tracks faces across frames and assigns persistent labels (face1, face2, etc.)
 
 Usage::
 
-    python realtime_demo.py --gallery attendance_demo/gallery.npz --video_source 0
+    python realtime_demo.py --video_source 0 --display
 
 Arguments:
 
-* ``--gallery``: Path to the gallery ``.npz`` file produced by
-  ``enroll.py``.  Defaults to ``attendance_demo/gallery.npz``.
 * ``--video_source``: Camera index (int) or path to a video file or
   network stream.  Defaults to ``0`` (the first webcam).
 * ``--display``: If specified, show the annotated video in a window.
@@ -23,10 +18,6 @@ Arguments:
   written.
 
 Press ``q`` in the display window to quit the demo.
-
-Note: Face detection runs on every frame.  For higher performance you
-can modify the code to detect less frequently or incorporate a
-tracking algorithm.  See the comments in the code for guidance.
 """
 
 from __future__ import annotations
@@ -39,18 +30,11 @@ from pathlib import Path
 from typing import Tuple
 
 from attendance_demo.detector import FaceDetector
-from attendance_demo.custom_embedder import embed_face
-from attendance_demo.gallery_utils import load_gallery, match_embedding
+from attendance_demo.face_tracker import FaceTracker
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the real‑time attendance demo.")
-    parser.add_argument(
-        '--gallery',
-        type=str,
-        default=str(Path(__file__).resolve().parents[0] / 'gallery.npz'),
-        help='Path to the gallery npz file created by enroll.py.',
-    )
+    parser = argparse.ArgumentParser(description="Run the real‑time attendance demo with face tracking.")
     parser.add_argument(
         '--video_source',
         type=str,
@@ -85,14 +69,15 @@ def open_video_source(src: str) -> cv2.VideoCapture:
 
 def main() -> None:
     args = parse_args()
-    gallery_path = Path(args.gallery)
-    if not gallery_path.exists():
-        raise FileNotFoundError(f"Gallery file does not exist: {gallery_path}")
-    gallery_embeddings, gallery_labels = load_gallery(str(gallery_path))
-    print(f"Loaded gallery with {len(gallery_labels)} entries from {gallery_path}")
 
-    # Load face detector
+    # Initialize face detector and tracker
     detector = FaceDetector()
+    tracker = FaceTracker(iou_threshold=0.3, max_disappeared=10)
+    
+    print("✓ Face detector initialized")
+    print("✓ Face tracker initialized")
+    print("\nStarting live face tracking...")
+    print("Press 'q' to quit\n")
 
     # Open the video source
     cap = open_video_source(args.video_source)
@@ -116,25 +101,37 @@ def main() -> None:
 
         # Detect faces on this frame
         faces = detector.detect(frame)
-        # Iterate through faces and classify
-        for (x, y, w, h) in faces:
-            # Expand the bounding box slightly to capture full face context
-            pad = int(0.1 * max(w, h))
-            x0 = max(x - pad, 0)
-            y0 = max(y - pad, 0)
-            x1 = min(x + w + pad, frame.shape[1])
-            y1 = min(y + h + pad, frame.shape[0])
-            face_crop = frame[y0:y1, x0:x1]
-            embedding = embed_face(face_crop)
-            label, score = match_embedding(embedding, gallery_embeddings, gallery_labels)
-            # Draw bounding box and label
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            text = f"{label}" if label != 'unknown' else 'Unknown'
-            cv2.putText(frame, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        
+        # Update tracker with detected faces
+        tracked_faces = tracker.update(faces)
+        
+        # Draw bounding boxes and labels for tracked faces
+        for face_id, face_data in tracked_faces.items():
+            x, y, w, h = face_data['bbox']
+            label = face_data['label']
+            is_new = face_data.get('is_new', False)
+            
+            # Color: green for tracked faces
+            color = (0, 255, 0)
+            
+            # Draw bounding box
+            cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
+            
+            # Draw label background
+            text = label
+            (text_w, text_h), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            cv2.rectangle(frame, (x, y - text_h - 10), (x + text_w, y), color, -1)
+            
+            # Draw label text
+            cv2.putText(frame, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            
+            # Print to console when new face appears
+            if is_new:
+                print(f"  [NEW] {label} detected at frame {frame_count}")
 
         # Display the frame
         if args.display:
-            cv2.imshow('Attendance Demo', frame)
+            cv2.imshow('Face Tracking Demo', frame)
             # Exit on 'q'
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -147,7 +144,7 @@ def main() -> None:
         writer.release()
     if args.display:
         cv2.destroyAllWindows()
-    print(f"Processed {frame_count} frames.")
+    print(f"\nProcessed {frame_count} frames.")
 
 
 if __name__ == '__main__':
