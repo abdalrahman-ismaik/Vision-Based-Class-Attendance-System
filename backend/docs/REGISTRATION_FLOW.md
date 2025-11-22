@@ -8,7 +8,7 @@ This document describes the complete end-to-end flow from mobile app capture thr
 
 The registration process involves:
 1. **Mobile App**: Capture 75 frames, select best 5, upload to backend
-2. **Backend**: Process 5 images, generate 100 training samples, train classifier
+2. **Backend**: Process images (1+), generate training samples, train classifier
 3. **Result**: Student ready for face recognition
 
 ---
@@ -106,7 +106,7 @@ Fields:
 - image_5: <file> (down pose)
 ```
 
-**Data Sent:** 5 images (~100-150 KB each)  
+**Data Sent:** Multiple images (~100-150 KB each, recommended 3-5 for best results)  
 **Upload Time:** ~3-10 seconds (depends on connection)
 
 ---

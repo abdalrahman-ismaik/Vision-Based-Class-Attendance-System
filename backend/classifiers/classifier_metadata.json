@@ -1,0 +1,76 @@
+{
+  "trained_at": "2025-11-22T22:38:24.111224",
+  "n_students": 5,
+  "n_embeddings": 440,
+  "average_test_accuracy": 0.9795454545454547,
+  "average_test_f1": 0.9478064792350507,
+  "per_student_metrics": {
+    "236339": {
+      "train_accuracy": 0.9943181818181818,
+      "test_accuracy": 0.9545454545454546,
+      "test_precision": 0.9285714285714286,
+      "test_recall": 0.8125,
+      "test_f1": 0.8666666666666667,
+      "n_positive": 80,
+      "n_negative": 360,
+      "n_train": 352,
+      "n_test": 88,
+      "class_weight_positive": 2.75,
+      "class_weight_negative": 0.6111111111111112
+    },
+    "236340": {
+      "train_accuracy": 0.9943181818181818,
+      "test_accuracy": 0.9886363636363636,
+      "test_precision": 0.96,
+      "test_recall": 1.0,
+      "test_f1": 0.9795918367346939,
+      "n_positive": 120,
+      "n_negative": 320,
+      "n_train": 352,
+      "n_test": 88,
+      "class_weight_positive": 1.8333333333333333,
+      "class_weight_negative": 0.6875
+    },
+    "236341": {
+      "train_accuracy": 0.9971590909090909,
+      "test_accuracy": 1.0,
+      "test_precision": 1.0,
+      "test_recall": 1.0,
+      "test_f1": 1.0,
+      "n_positive": 60,
+      "n_negative": 380,
+      "n_train": 352,
+      "n_test": 88,
+      "class_weight_positive": 3.6666666666666665,
+      "class_weight_negative": 0.5789473684210527
+    },
+    "236342": {
+      "train_accuracy": 0.9971590909090909,
+      "test_accuracy": 0.9886363636363636,
+      "test_precision": 0.9411764705882353,
+      "test_recall": 1.0,
+      "test_f1": 0.9696969696969697,
+      "n_positive": 80,
+      "n_negative": 360,
+      "n_train": 352,
+      "n_test": 88,
+      "class_weight_positive": 2.75,
+      "class_weight_negative": 0.6111111111111112
+    },
+    "236343": {
+      "train_accuracy": 0.9971590909090909,
+      "test_accuracy": 0.9659090909090909,
+      "test_precision": 0.9473684210526315,
+      "test_recall": 0.9,
+      "test_f1": 0.9230769230769231,
+      "n_positive": 100,
+      "n_negative": 340,
+      "n_train": 352,
+      "n_test": 88,
+      "class_weight_positive": 2.2,
+      "class_weight_negative": 0.6470588235294118
+    }
+  },
+  "classifier_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\classifiers\\face_classifier.pkl",
+  "classifier_type": "binary_per_student"
+}

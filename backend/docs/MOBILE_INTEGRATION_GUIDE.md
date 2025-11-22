@@ -33,7 +33,7 @@ This guide explains how to integrate the mobile app with the backend student reg
 
 **Image Requirements:**
 - Format: JPG, PNG, JPEG, BMP
-- All 5 images must be provided
+- At least 1 image must be provided (more images = better accuracy)
 - Images should be pre-validated for sharpness by mobile app
 - Different poses/angles preferred for better face recognition
 
@@ -78,7 +78,7 @@ This guide explains how to integrate the mobile app with the backend student reg
 #### 400 Bad Request - Missing Images
 ```json
 {
-  "error": "Missing image_3. All 5 images are required."
+  "error": "No image files provided. Use 'images' field for multiple files."
 }
 ```
 
@@ -116,7 +116,7 @@ class StudentRegistrationService {
   Future<Map<String, dynamic>> registerStudent({
     required String studentId,
     required String name,
-    required List<File> images, // Must contain exactly 5 images
+    required List<File> images, // Provide 1 or more images (recommended: 3-5 for better accuracy)
     String? email,
     String? department,
     int? year,
@@ -124,7 +124,7 @@ class StudentRegistrationService {
   }) async {
     // Validate image count
     if (images.length != 5) {
-      throw ArgumentError('Exactly 5 images are required, got ${images.length}');
+      throw ArgumentError('At least 1 image is required, got ${images.length}');
     }
 
     try {

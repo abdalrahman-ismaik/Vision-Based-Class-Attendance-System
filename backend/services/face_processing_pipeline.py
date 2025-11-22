@@ -6,6 +6,7 @@ Handles image augmentation, face detection, embedding generation, and classifier
 import os
 import sys
 import cv2
+import torch
 import numpy as np
 from PIL import Image, ImageEnhance
 import pickle
@@ -16,29 +17,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import logging
 
-# Add FaceNet directory to path - use absolute path
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/services
-PROJECT_ROOT = os.path.dirname(os.path.dirname(BACKEND_DIR))  # project root
-FACENET_DIR = os.path.join(PROJECT_ROOT, 'FaceNet')
-if FACENET_DIR not in sys.path:
-    sys.path.insert(0, FACENET_DIR)
+# Add FaceNet directory to path
+# Navigate from backend/services/ to FaceNet/
+facenet_path = os.path.join(os.path.dirname(__file__), '..', '..', 'FaceNet')
+sys.path.insert(0, facenet_path)
 
-# Lazy import torch and torchvision to speed up initial load
-# These will be imported only when FaceProcessingPipeline is instantiated
-torch = None
-transforms = None
-MobileFaceNet = None
-
-def _lazy_import_torch():
-    """Lazy import torch modules to improve startup time"""
-    global torch, transforms, MobileFaceNet
-    if torch is None:
-        import torch as _torch
-        from torchvision import transforms as _transforms
-        from networks.models_facenet import MobileFaceNet as _MobileFaceNet
-        torch = _torch
-        transforms = _transforms
-        MobileFaceNet = _MobileFaceNet
+from networks.models_facenet import MobileFaceNet
+from torchvision import transforms
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,27 +33,32 @@ logger = logging.getLogger(__name__)
 # ============= CONSTANTS =============
 FACENET_MEAN = [0.31928780674934387, 0.2873991131782532, 0.25779902935028076]
 FACENET_STD = [0.19799138605594635, 0.20757903158664703, 0.21088403463363647]
-DEFAULT_CHECKPOINT = '../FaceNet/mobilefacenet_arcface/best_model_epoch43_acc100.00.pth'
+# Path from backend/services/ to FaceNet/mobilefacenet_arcface/
+DEFAULT_CHECKPOINT = '../../FaceNet/mobilefacenet_arcface/best_model_epoch43_acc100.00.pth'
 
 
 class FaceDetector:
-    """Face detector using RetinaFace"""
+    """Face detector using OpenCV Haar Cascades (avoids Keras compatibility issues)"""
     
-    def __init__(self, threshold=0.9):
-        """Initialize face detector"""
+    def __init__(self, scale_factor=1.1, min_neighbors=5, min_size=(30, 30)):
+        """Initialize OpenCV face detector using Haar Cascades"""
+        self.scale_factor = scale_factor
+        self.min_neighbors = min_neighbors
+        self.min_size = min_size
+        
+        # Use OpenCV's built-in Haar Cascade classifier
         try:
-            # Try importing from FaceNet utils
-            sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../FaceNet'))
-            from utils.utils import RetinaFacePyPIAdapter
-            self.detector = RetinaFacePyPIAdapter(threshold=threshold)
-            logger.info(f"✓ Face detector initialized with threshold={threshold}")
+            self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            if self.face_cascade.empty():
+                raise RuntimeError("Failed to load Haar Cascade classifier")
+            logger.info(f"✓ OpenCV Haar Cascade face detector initialized")
         except Exception as e:
             logger.error(f"Failed to initialize face detector: {e}")
             raise
     
     def detect_faces(self, image):
         """
-        Detect faces in image
+        Detect faces in image using Haar Cascades
         
         Args:
             image: PIL Image or numpy array
@@ -76,10 +66,28 @@ class FaceDetector:
         Returns:
             List of bounding boxes [x1, y1, x2, y2]
         """
+        # Convert PIL to numpy if needed
         if isinstance(image, Image.Image):
             image = np.array(image)
         
-        return self.detector.detect_faces(image)
+        # Convert to grayscale for Haar Cascade
+        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if len(image.shape) == 3 else image
+        
+        # Detect faces
+        detected_faces = self.face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=self.scale_factor,
+            minNeighbors=self.min_neighbors,
+            minSize=self.min_size,
+            flags=cv2.CASCADE_SCALE_IMAGE
+        )
+        
+        # Convert from (x, y, w, h) to [x1, y1, x2, y2]
+        faces = []
+        for (x, y, w, h) in detected_faces:
+            faces.append([x, y, x + w, y + h])
+        
+        return faces
 
 
 class ImageAugmentor:
@@ -221,9 +229,6 @@ class EmbeddingGenerator:
             checkpoint_path: Path to FaceNet checkpoint
             device: 'cuda' or 'cpu'
         """
-        # Lazy load torch modules
-        _lazy_import_torch()
-        
         self.device = device if torch.cuda.is_available() else 'cpu'
         
         if checkpoint_path is None:
@@ -242,29 +247,15 @@ class EmbeddingGenerator:
         
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
         
-        # Extract state dict
         if 'model_state_dict' in checkpoint:
-            state_dict = checkpoint['model_state_dict']
+            model.load_state_dict(checkpoint['model_state_dict'], strict=False)
         else:
-            state_dict = checkpoint
-        
-        # Load with strict=False to handle architecture variations
-        # The model will use matching keys and ignore mismatches
-        try:
-            logger.info("Loading model weights...")
-            missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-            logger.info(f"✓ Model weights loaded")
-            logger.info(f"  Matched keys: {len(state_dict) - len(unexpected_keys)}")
-            logger.info(f"  Missing keys: {len(missing_keys)} (random init)")
-            logger.info(f"  Unexpected keys: {len(unexpected_keys)} (ignored)")
-        except Exception as load_error:
-            logger.error(f"load_state_dict failed: {type(load_error).__name__}: {load_error}")
-            raise
+            model.load_state_dict(checkpoint, strict=False)
         
         model.to(self.device)
         model.eval()
         
-        logger.info(f"✓ FaceNet model ready on {self.device}")
+        logger.info(f"Loaded FaceNet model from {checkpoint_path}")
         return model
     
     def _get_transform(self):
@@ -299,117 +290,244 @@ class EmbeddingGenerator:
 
 
 class FaceClassifier:
-    """Train and use SVM classifier for face recognition"""
+    """Train and use binary classifiers for face recognition - one per student"""
     
     def __init__(self):
-        """Initialize classifier"""
-        self.classifier = SVC(kernel='linear', probability=True, C=1.0)
-        self.label_encoder = LabelEncoder()
+        """Initialize classifier storage"""
+        self.classifiers = {}  # Dict of {student_id: classifier}
+        self.student_ids = []
         self.is_trained = False
     
     def train(self, embeddings, labels):
         """
-        Train classifier on embeddings
+        Train binary classifier for each student
         
         Args:
             embeddings: numpy array of shape (n_samples, embedding_dim)
-            labels: numpy array of shape (n_samples,) - class labels
+            labels: numpy array of shape (n_samples,) - student IDs
         
         Returns:
             dict with training metrics
         """
-        # Encode labels
-        labels_encoded = self.label_encoder.fit_transform(labels)
+        unique_labels = np.unique(labels)
+        self.student_ids = list(unique_labels)
         
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
-            embeddings, labels_encoded, test_size=0.2, random_state=42, stratify=labels_encoded
-        )
+        if len(unique_labels) < 2:
+            raise ValueError("Need at least 2 students to train classifiers")
         
-        # Train classifier
-        logger.info(f"Training classifier on {len(X_train)} samples...")
-        self.classifier.fit(X_train, y_train)
+        logger.info(f"Training binary classifiers for {len(unique_labels)} students...")
         
-        # Evaluate
-        train_pred = self.classifier.predict(X_train)
-        test_pred = self.classifier.predict(X_test)
+        metrics = {
+            'n_students': len(unique_labels),
+            'n_embeddings': len(embeddings),
+            'per_student_metrics': {}
+        }
         
-        train_acc = accuracy_score(y_train, train_pred)
-        test_acc = accuracy_score(y_test, test_pred)
+        # Train one binary classifier per student
+        for student_id in unique_labels:
+            logger.info(f"  Training classifier for {student_id}...")
+            
+            # Create binary labels: 1 for this student, 0 for others
+            binary_labels = (labels == student_id).astype(int)
+            
+            # Count positive and negative samples
+            n_positive = np.sum(binary_labels == 1)
+            n_negative = np.sum(binary_labels == 0)
+            
+            logger.info(f"    Positive samples: {n_positive}, Negative samples: {n_negative}")
+            
+            # Handle class imbalance by adjusting weights
+            # Calculate class weights inversely proportional to class frequencies
+            weight_positive = len(binary_labels) / (2 * n_positive)
+            weight_negative = len(binary_labels) / (2 * n_negative)
+            class_weights = {1: weight_positive, 0: weight_negative}
+            
+            # Split data
+            X_train, X_test, y_train, y_test = train_test_split(
+                embeddings, binary_labels, 
+                test_size=0.2, 
+                random_state=42,
+                stratify=binary_labels  # Maintain class balance in splits
+            )
+            
+            # Train binary SVM classifier with class weights
+            classifier = SVC(
+                kernel='linear', 
+                probability=True, 
+                C=1.0,
+                class_weight=class_weights  # Handle imbalance
+            )
+            classifier.fit(X_train, y_train)
+            
+            # Evaluate
+            train_pred = classifier.predict(X_train)
+            test_pred = classifier.predict(X_test)
+            
+            train_acc = accuracy_score(y_train, train_pred)
+            test_acc = accuracy_score(y_test, test_pred)
+            
+            # Calculate precision, recall, F1 for the positive class
+            from sklearn.metrics import precision_recall_fscore_support
+            test_prec, test_rec, test_f1, _ = precision_recall_fscore_support(
+                y_test, test_pred, pos_label=1, average='binary', zero_division=0
+            )
+            
+            # Store classifier
+            self.classifiers[student_id] = classifier
+            
+            metrics['per_student_metrics'][student_id] = {
+                'train_accuracy': float(train_acc),
+                'test_accuracy': float(test_acc),
+                'test_precision': float(test_prec),
+                'test_recall': float(test_rec),
+                'test_f1': float(test_f1),
+                'n_positive': int(n_positive),
+                'n_negative': int(n_negative),
+                'n_train': len(X_train),
+                'n_test': len(X_test),
+                'class_weight_positive': float(weight_positive),
+                'class_weight_negative': float(weight_negative)
+            }
+            
+            logger.info(f"    Train acc: {train_acc:.3f}, Test acc: {test_acc:.3f}, "
+                       f"Precision: {test_prec:.3f}, Recall: {test_rec:.3f}, F1: {test_f1:.3f}")
         
         self.is_trained = True
         
-        metrics = {
-            'train_accuracy': train_acc,
-            'test_accuracy': test_acc,
-            'n_train': len(X_train),
-            'n_test': len(X_test),
-            'n_classes': len(self.label_encoder.classes_)
-        }
+        # Calculate average metrics
+        avg_test_acc = np.mean([m['test_accuracy'] for m in metrics['per_student_metrics'].values()])
+        avg_test_f1 = np.mean([m['test_f1'] for m in metrics['per_student_metrics'].values()])
         
-        logger.info(f"Training complete: train_acc={train_acc:.3f}, test_acc={test_acc:.3f}")
+        metrics['average_test_accuracy'] = float(avg_test_acc)
+        metrics['average_test_f1'] = float(avg_test_f1)
+        
+        logger.info(f"Training complete: avg_test_acc={avg_test_acc:.3f}, avg_f1={avg_test_f1:.3f}")
         return metrics
     
-    def predict(self, embedding, threshold=0.5):
+    def predict(self, embedding, threshold=0.5, allowed_student_ids=None):
         """
-        Predict class for an embedding
+        Predict using all binary classifiers and return best match
         
         Args:
             embedding: numpy array of shape (embedding_dim,)
+            threshold: Minimum probability threshold for positive prediction
+        
+        Returns:
+            dict with prediction results
+        """
+        if not self.is_trained:
+            raise ValueError("Classifiers not trained yet!")
+        
+        embedding = embedding.reshape(1, -1)
+        
+        # Determine which classifiers to consult
+        if allowed_student_ids is None:
+            iter_classifiers = self.classifiers.items()
+        else:
+            # Filter to allowed students and ignore missing ones
+            iter_classifiers = (
+                (sid, self.classifiers[sid])
+                for sid in allowed_student_ids if sid in self.classifiers
+            )
+
+        # Get predictions from the selected classifiers
+        predictions = {}
+        for student_id, classifier in iter_classifiers:
+            # Predict probability for positive class (this student)
+            proba = classifier.predict_proba(embedding)[0]
+            positive_proba = proba[1] if len(proba) > 1 else proba[0]
+
+            predictions[student_id] = float(positive_proba)
+        
+        if len(predictions) == 0:
+            # No classifiers available in the allowed set
+            return {
+                'label': 'Unknown',
+                'confidence': 0.0,
+                'all_predictions': predictions,
+                'threshold_used': threshold
+            }
+
+        # Find student with highest confidence
+        best_student = max(predictions, key=predictions.get)
+        best_confidence = predictions[best_student]
+        
+        # Check if confidence exceeds threshold
+        if best_confidence < threshold:
+            return {
+                'label': 'Unknown',
+                'confidence': best_confidence,
+                'all_predictions': predictions,
+                'threshold_used': threshold
+            }
+        
+        return {
+            'label': best_student,
+            'confidence': best_confidence,
+            'all_predictions': predictions,
+            'threshold_used': threshold
+        }
+    
+    def predict_student(self, embedding, student_id, threshold=0.5):
+        """
+        Predict if embedding matches a specific student
+        
+        Args:
+            embedding: numpy array of shape (embedding_dim,)
+            student_id: Student ID to check
             threshold: Minimum probability threshold
         
         Returns:
             dict with prediction results
         """
         if not self.is_trained:
-            raise ValueError("Classifier not trained yet!")
+            raise ValueError("Classifiers not trained yet!")
         
-        # Predict
+        if student_id not in self.classifiers:
+            raise ValueError(f"No classifier found for student {student_id}")
+        
         embedding = embedding.reshape(1, -1)
-        label_encoded = self.classifier.predict(embedding)[0]
-        probabilities = self.classifier.predict_proba(embedding)[0]
+        classifier = self.classifiers[student_id]
         
-        max_prob = probabilities.max()
+        # Predict probability for positive class
+        proba = classifier.predict_proba(embedding)[0]
+        positive_proba = proba[1] if len(proba) > 1 else proba[0]
         
-        # Check threshold
-        if max_prob < threshold:
-            return {
-                'label': 'Unknown',
-                'confidence': max_prob,
-                'probabilities': dict(zip(self.label_encoder.classes_, probabilities))
-            }
-        
-        label = self.label_encoder.inverse_transform([label_encoded])[0]
+        is_match = positive_proba >= threshold
         
         return {
-            'label': label,
-            'confidence': max_prob,
-            'probabilities': dict(zip(self.label_encoder.classes_, probabilities))
+            'student_id': student_id,
+            'is_match': bool(is_match),
+            'confidence': float(positive_proba),
+            'threshold_used': threshold
         }
     
     def save(self, filepath):
-        """Save classifier to file"""
+        """Save all classifiers to file"""
         if not self.is_trained:
-            raise ValueError("Classifier not trained yet!")
+            raise ValueError("Classifiers not trained yet!")
+        
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         
         with open(filepath, 'wb') as f:
             pickle.dump({
-                'classifier': self.classifier,
-                'label_encoder': self.label_encoder
+                'classifiers': self.classifiers,
+                'student_ids': self.student_ids
             }, f)
         
-        logger.info(f"Classifier saved to {filepath}")
+        logger.info(f"Classifiers saved to {filepath}")
     
     def load(self, filepath):
-        """Load classifier from file"""
+        """Load classifiers from file"""
         with open(filepath, 'rb') as f:
             data = pickle.load(f)
         
-        self.classifier = data['classifier']
-        self.label_encoder = data['label_encoder']
+        self.classifiers = data['classifiers']
+        self.student_ids = data['student_ids']
         self.is_trained = True
         
-        logger.info(f"Classifier loaded from {filepath}")
+        logger.info(f"Loaded {len(self.classifiers)} classifiers from {filepath}")
 
 
 class FaceProcessingPipeline:
@@ -417,7 +535,7 @@ class FaceProcessingPipeline:
     
     def __init__(self, checkpoint_path=None, device='cuda'):
         """Initialize pipeline components"""
-        self.face_detector = FaceDetector(threshold=0.9)
+        self.face_detector = FaceDetector()  # OpenCV Haar Cascade (no threshold parameter)
         self.augmentor = ImageAugmentor()
         self.embedding_generator = EmbeddingGenerator(checkpoint_path, device)
         self.classifier = FaceClassifier()
@@ -511,25 +629,21 @@ class FaceProcessingPipeline:
     
     def process_student_images(self, image_paths, student_id, output_dir, augment_per_image=20):
         """
-        Process multiple student images with augmentation.
-        This is used when the mobile app sends pre-validated images from different poses.
-        
-        The mobile app provides 5 real pose variations, and we generate augmentations for each:
-        - 5 poses × 20 augmentations each = 100 total training samples
-        This combines real pose diversity with synthetic variations for maximum accuracy.
+        Process multiple student images (different poses):
+        1. Detect face in each image
+        2. Generate augmentations for each pose
+        3. Extract embeddings for all augmented images
         
         Args:
-            image_paths: List of paths to student images (5 poses from mobile)
+            image_paths: List of paths to student images (different poses)
             student_id: Student identifier
-            output_dir: Directory to save processed faces and embeddings
-            augment_per_image: Number of augmentations per pose (default 20)
-                               Set to 0 to use only original images without augmentation
+            output_dir: Directory to save processed images and embeddings
+            augment_per_image: Number of augmentations per pose (0 = no augmentation)
         
         Returns:
-            dict with processing results or None if failed
+            dict with processing results or None if no faces detected
         """
-        logger.info(f"Processing {len(image_paths)} images for student {student_id} "
-                   f"(augment_per_image={augment_per_image})")
+        logger.info(f"Processing {len(image_paths)} images for student {student_id}")
         
         # Create output directory
         student_dir = os.path.join(output_dir, student_id)
@@ -538,6 +652,7 @@ class FaceProcessingPipeline:
         embeddings = []
         processed_count = 0
         
+        # Process each pose
         for idx, image_path in enumerate(image_paths, 1):
             try:
                 # Load image
@@ -572,7 +687,6 @@ class FaceProcessingPipeline:
                 # Apply augmentation if requested
                 if augment_per_image > 0:
                     # Generate augmentations for this pose
-                    # This creates augment_per_image variations including the original
                     augmented_images = self.augmentor.generate_augmentations(
                         face_image, num_augmentations=augment_per_image
                     )
@@ -620,7 +734,7 @@ class FaceProcessingPipeline:
         
         result = {
             'student_id': student_id,
-            'num_poses_captured': len([e for e in embeddings if e is not None]),
+            'num_poses_captured': len([p for p in image_paths if os.path.exists(p)]),
             'num_samples_total': processed_count,
             'embeddings_shape': embeddings.shape,
             'output_dir': student_dir,
@@ -684,7 +798,7 @@ class FaceProcessingPipeline:
         
         return result
     
-    def recognize_face(self, image_path, threshold=0.5):
+    def recognize_face(self, image_path, threshold=0.5, allowed_student_ids=None):
         """
         Recognize face in an image using trained classifier
         
@@ -726,8 +840,8 @@ class FaceProcessingPipeline:
         # Generate embedding
         embedding = self.embedding_generator.generate_embedding(face_image)
         
-        # Predict
-        prediction = self.classifier.predict(embedding, threshold=threshold)
+    # Predict (optionally restricted to a list of student IDs)
+        prediction = self.classifier.predict(embedding, threshold=threshold, allowed_student_ids=allowed_student_ids)
         
         return {
             'bbox': [x1, y1, x2, y2],

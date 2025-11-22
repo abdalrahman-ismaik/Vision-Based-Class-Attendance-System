@@ -67,7 +67,7 @@ Swagger documentation at `http://localhost:5000/api/docs`
 Full API documentation available at `/api/docs` when running the server.
 
 ### Student Registration
-The registration endpoint now accepts **5 face images** in a single API call. The mobile app should capture 5 different poses and send them as `image_1`, `image_2`, `image_3`, `image_4`, `image_5`.
+The registration endpoint accepts **one or more face images** (different poses/angles) in a single API call. The mobile app can send multiple images using the `images` field (with `action='append'` for multiple files).
 
 For mobile app integration details, see [Mobile Integration Guide](docs/MOBILE_INTEGRATION_GUIDE.md).
 
