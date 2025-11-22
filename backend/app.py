@@ -186,30 +186,39 @@ def validate_image(file):
     return True, "Valid"
 
 
-def save_student_image(file, student_id):
-    """Save student face image to the uploads folder."""
+def save_student_images(files, student_id):
+    """Save multiple student face images to the uploads folder."""
     # Create student-specific folder
     student_folder = os.path.join(app.config['STUDENT_DATA_FOLDER'], student_id)
     os.makedirs(student_folder, exist_ok=True)
     
-    # Generate unique filename
-    ext = file.filename.rsplit('.', 1)[1].lower()
-    filename = f"{student_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{ext}"
-    filepath = os.path.join(student_folder, filename)
+    saved_paths = []
+    errors = []
     
-    # Save the file
-    file.save(filepath)
+    for idx, file in enumerate(files, 1):
+        # Generate unique filename
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"{student_id}_pose{idx}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{ext}"
+        filepath = os.path.join(student_folder, filename)
+        
+        # Save the file
+        file.save(filepath)
+        
+        # Validate it's a valid image
+        try:
+            img = Image.open(filepath)
+            img.verify()
+            logger.info(f"Image {idx} saved successfully: {filepath}")
+            saved_paths.append(filepath)
+        except Exception as e:
+            os.remove(filepath)
+            logger.error(f"Invalid image file {idx}: {e}")
+            errors.append(f"Image {idx}: {str(e)}")
     
-    # Validate it's a valid image
-    try:
-        img = Image.open(filepath)
-        img.verify()
-        logger.info(f"Image saved successfully: {filepath}")
-        return filepath, None
-    except Exception as e:
-        os.remove(filepath)
-        logger.error(f"Invalid image file: {e}")
-        return None, f"Invalid image file: {str(e)}"
+    if len(saved_paths) == 0:
+        return None, "No valid images could be saved: " + "; ".join(errors)
+    
+    return saved_paths, None
 
 
 # ==================== API Endpoints ====================
@@ -254,12 +263,12 @@ class StudentList(Resource):
         .add_argument('email', type=str, required=False, location='form', help='Student Email')
         .add_argument('department', type=str, required=False, location='form', help='Department')
         .add_argument('year', type=int, required=False, location='form', help='Academic Year')
-        .add_argument('image', type=FileStorage, required=True, location='files', help='Student Face Image'))
+        .add_argument('images', type=FileStorage, required=True, location='files', help='Student Face Images (multiple files with same field name)', action='append'))
     @api.response(201, 'Student registered successfully')
     @api.response(400, 'Bad request - validation error')
     @api.response(409, 'Conflict - student already exists')
     def post(self):
-        """Register a new student with face image."""
+        """Register a new student with one or more face images (different poses)."""
         try:
             # Get form data
             student_id = request.form.get('student_id')
@@ -272,16 +281,20 @@ class StudentList(Resource):
             if not student_id or not name:
                 return {'error': 'student_id and name are required'}, 400
             
-            # Get image file
-            if 'image' not in request.files:
-                return {'error': 'No image file provided'}, 400
+            # Get image files (support both 'images' and 'image' for backwards compatibility)
+            files = request.files.getlist('images')
+            if not files or len(files) == 0:
+                # Fallback to single 'image' field
+                if 'image' in request.files:
+                    files = [request.files['image']]
+                else:
+                    return {'error': 'No image files provided. Use "images" field for multiple files.'}, 400
             
-            file = request.files['image']
-            
-            # Validate image
-            is_valid, message = validate_image(file)
-            if not is_valid:
-                return {'error': message}, 400
+            # Validate all images
+            for idx, file in enumerate(files, 1):
+                is_valid, message = validate_image(file)
+                if not is_valid:
+                    return {'error': f'Image {idx}: {message}'}, 400
             
             # Check if student already exists
             database = load_database()
@@ -291,8 +304,8 @@ class StudentList(Resource):
                     'student_id': student_id
                 }, 409
             
-            # Save image
-            image_path, error = save_student_image(file, student_id)
+            # Save all images
+            image_paths, error = save_student_images(files, student_id)
             if error:
                 return {'error': error}, 400
             
@@ -305,7 +318,8 @@ class StudentList(Resource):
                 'email': email,
                 'department': department,
                 'year': year,
-                'image_path': image_path,
+                'image_paths': image_paths,  # Now stores list of paths
+                'num_poses': len(image_paths),
                 'registered_at': datetime.now().isoformat(),
                 'processing_status': 'pending'
             }
@@ -334,12 +348,12 @@ class StudentList(Resource):
                     
                     logger.info(f"Pipeline initialized, starting face processing for {student_id}")
                     
-                    # Process student image
-                    result = pipeline.process_student_image(
-                        image_path=image_path,
+                    # Process student images (multiple poses)
+                    result = pipeline.process_student_images(
+                        image_paths=image_paths,
                         student_id=student_id,
                         output_dir=app.config['PROCESSED_FACES_FOLDER'],
-                        num_augmentations=20
+                        augment_per_image=20
                     )
                     
                     # Reload database again before updating
@@ -349,10 +363,11 @@ class StudentList(Resource):
                         # Update database with processing results
                         db[student_id]['processing_status'] = 'completed'
                         db[student_id]['processed_at'] = datetime.now().isoformat()
-                        db[student_id]['num_augmentations'] = result['num_augmentations']
+                        db[student_id]['num_poses_captured'] = result['num_poses_captured']
+                        db[student_id]['num_samples_total'] = result['num_samples_total']
                         db[student_id]['embeddings_path'] = result['embeddings_path']
                         save_database(db)
-                        logger.info(f"✓ Face processing completed for {student_id}: {result['num_augmentations']} augmentations")
+                        logger.info(f"✓ Face processing completed for {student_id}: {result['num_samples_total']} samples from {result['num_poses_captured']} poses")
                     else:
                         db[student_id]['processing_status'] = 'failed'
                         db[student_id]['processing_error'] = 'No face detected'
@@ -539,7 +554,7 @@ class ProcessStudentFace(Resource):
     @api.response(404, 'Student not found')
     @api.response(500, 'Processing failed')
     def post(self, student_id):
-        """Manually process student face (synchronous for debugging)."""
+        """Manually process student faces (synchronous for debugging)."""
         try:
             database = load_database()
             
@@ -547,33 +562,46 @@ class ProcessStudentFace(Resource):
                 return {'error': 'Student not found'}, 404
             
             student = database[student_id]
-            image_path = student.get('image_path')
             
-            if not image_path or not os.path.exists(image_path):
-                return {'error': 'Student image not found'}, 404
+            # Support both old single image_path and new image_paths list
+            image_paths = student.get('image_paths')
+            if not image_paths:
+                # Fallback to old single image format
+                image_path = student.get('image_path')
+                if image_path:
+                    image_paths = [image_path]
             
-            logger.info(f"Manual processing triggered for {student_id}")
+            if not image_paths:
+                return {'error': 'No student images found'}, 404
+            
+            # Check if at least one image exists
+            existing_paths = [p for p in image_paths if os.path.exists(p)]
+            if len(existing_paths) == 0:
+                return {'error': 'No student image files found on disk'}, 404
+            
+            logger.info(f"Manual processing triggered for {student_id} ({len(existing_paths)} images)")
             
             # Get pipeline
             pipeline = get_pipeline()
             if pipeline is None:
                 return {'error': 'Face processing pipeline not available'}, 500
             
-            logger.info(f"Pipeline ready, processing {image_path}")
+            logger.info(f"Pipeline ready, processing {len(existing_paths)} images")
             
-            # Process student image (synchronous)
-            result = pipeline.process_student_image(
-                image_path=image_path,
+            # Process student images (synchronous)
+            result = pipeline.process_student_images(
+                image_paths=existing_paths,
                 student_id=student_id,
                 output_dir=app.config['PROCESSED_FACES_FOLDER'],
-                num_augmentations=20
+                augment_per_image=20
             )
             
             if result:
                 # Update database
                 database[student_id]['processing_status'] = 'completed'
                 database[student_id]['processed_at'] = datetime.now().isoformat()
-                database[student_id]['num_augmentations'] = result['num_augmentations']
+                database[student_id]['num_poses_captured'] = result['num_poses_captured']
+                database[student_id]['num_samples_total'] = result['num_samples_total']
                 database[student_id]['embeddings_path'] = result['embeddings_path']
                 save_database(database)
                 
@@ -585,10 +613,10 @@ class ProcessStudentFace(Resource):
                 }, 200
             else:
                 database[student_id]['processing_status'] = 'failed'
-                database[student_id]['processing_error'] = 'No face detected'
+                database[student_id]['processing_error'] = 'No faces detected in any image'
                 save_database(database)
                 
-                return {'error': 'No face detected in image'}, 400
+                return {'error': 'No faces detected in any image'}, 400
                 
         except Exception as e:
             logger.error(f"Error processing student {student_id}: {e}", exc_info=True)

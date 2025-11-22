@@ -50,20 +50,27 @@ Swagger UI at: `http://localhost:5000/api/docs`
 
 #### Step 2: Register Students
 
+**Single Image (for backwards compatibility):**
+
 ```bash
-# Register first student
 curl -X POST http://localhost:5000/api/students/ \
   -F "student_id=S001" \
   -F "name=John Doe" \
   -F "email=john@example.com" \
   -F "image=@path/to/john.jpg"
+```
 
-# Register second student
+**Multiple Images (recommended - different poses):**
+
+```bash
+# Register with multiple poses for better accuracy
 curl -X POST http://localhost:5000/api/students/ \
   -F "student_id=S002" \
   -F "name=Jane Smith" \
   -F "email=jane@example.com" \
-  -F "image=@path/to/jane.jpg"
+  -F "images=@path/to/jane_front.jpg" \
+  -F "images=@path/to/jane_left.jpg" \
+  -F "images=@path/to/jane_right.jpg"
 ```
 
 **Response:**
@@ -72,8 +79,9 @@ curl -X POST http://localhost:5000/api/students/ \
 {
   "message": "Student registered successfully. Face processing started in background.",
   "student": {
-    "student_id": "S001",
+    "student_id": "S002",
     "processing_status": "pending",
+    "num_poses": 3,
     ...
   }
 }
@@ -91,14 +99,18 @@ curl http://localhost:5000/api/students/S001
 
 ```json
 {
-  "student_id": "S001",
-  "name": "John Doe",
+  "student_id": "S002",
+  "name": "Jane Smith",
   "processing_status": "completed",
-  "num_augmentations": 21,
-  "embeddings_path": "/path/to/processed_faces/S001/embeddings.npy",
+  "num_poses": 3,
+  "num_poses_captured": 3,
+  "num_samples_total": 63,
+  "embeddings_path": "/path/to/processed_faces/S002/embeddings.npy",
   ...
 }
 ```
+
+Note: With 3 poses and 20 augmentations per pose, you get 3 × 21 = 63 total samples!
 
 #### Step 4: Train Classifier
 
@@ -175,21 +187,24 @@ Visit `http://localhost:5000/api/docs` for interactive API documentation.
 
 When you register a student, the system automatically:
 
-1. **Saves Original Image** → `uploads/students/{student_id}/`
-2. **Detects Face** → Using RetinaFace
-3. **Generates 20 Augmentations:**
+1. **Saves Original Images** → `uploads/students/{student_id}/` (supports multiple poses)
+2. **Detects Faces** → Using RetinaFace on each image
+3. **Generates 20 Augmentations per Pose:**
    - Zoom variations (in/out)
    - Brightness adjustments (dim/bright)
    - Contrast changes
    - Rotations
    - Gaussian noise
    - Combinations
-4. **Saves Augmented Images** → `processed_faces/{student_id}/aug_*.jpg`
-5. **Generates Embeddings** → 512-dimensional vectors for each augmentation
-6. **Saves Embeddings** → `processed_faces/{student_id}/embeddings.npy`
+4. **Saves Processed Images** → `processed_faces/{student_id}/pose{X}_aug{Y}.jpg`
+5. **Generates Embeddings** → 512-dimensional vectors for each sample
+6. **Saves All Embeddings** → `processed_faces/{student_id}/embeddings.npy`
 7. **Updates Status** → `processing_status: "completed"`
 
-All in **5-10 seconds** per student!
+**Performance:**
+- Single pose: ~5-10 seconds
+- Multiple poses (3): ~15-25 seconds
+- More poses = better recognition accuracy!
 
 ## Troubleshooting
 
@@ -228,23 +243,31 @@ backend/
 ├── uploads/
 │   └── students/
 │       ├── S001/
-│       │   └── S001_20251020_120000.jpg  # Original image
+│       │   └── S001_pose1_20251020_120000.jpg  # Single pose
 │       └── S002/
-│           └── S002_20251020_120100.jpg
+│           ├── S002_pose1_20251020_120100.jpg  # Multiple poses
+│           ├── S002_pose2_20251020_120101.jpg
+│           └── S002_pose3_20251020_120102.jpg
 ├── processed_faces/
 │   ├── S001/
-│   │   ├── aug_000.jpg  # Original
-│   │   ├── aug_001.jpg  # Zoom in
-│   │   ├── aug_002.jpg  # Brightness
+│   │   ├── pose1_aug0.jpg   # Original from pose 1
+│   │   ├── pose1_aug1.jpg   # Augmentations from pose 1
 │   │   ├── ...
-│   │   ├── aug_020.jpg
-│   │   └── embeddings.npy  # (21, 512) array
+│   │   ├── pose1_aug20.jpg
+│   │   └── embeddings.npy   # (21, 512) array - single pose
 │   └── S002/
-│       ├── aug_000.jpg
+│       ├── pose1_aug0.jpg   # Pose 1 original
+│       ├── pose1_aug1.jpg   # Pose 1 augmentations
 │       ├── ...
-│       └── embeddings.npy
+│       ├── pose2_aug0.jpg   # Pose 2 original
+│       ├── pose2_aug1.jpg   # Pose 2 augmentations
+│       ├── ...
+│       ├── pose3_aug0.jpg   # Pose 3 original
+│       ├── pose3_aug1.jpg   # Pose 3 augmentations
+│       ├── ...
+│       └── embeddings.npy   # (63, 512) array - 3 poses × 21 samples
 └── classifiers/
-    ├── face_classifier.pkl  # Trained SVM
+    ├── face_classifier.pkl          # Binary SVM per student
     └── classifier_metadata.json
 ```
 
