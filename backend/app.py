@@ -15,6 +15,7 @@ from datetime import datetime
 from PIL import Image
 import logging
 import threading
+from werkzeug.datastructures import FileStorage as WerkzeugFileStorage
 
 # Import face processing pipeline
 from face_processing_pipeline import FaceProcessingPipeline
@@ -45,7 +46,7 @@ def get_pipeline():
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = None  # Remove upload size limit
 
 # Configure CORS
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -256,19 +257,27 @@ class StudentList(Resource):
             'students': students
         }, 200
     
-    @api.doc('register_student')
+    @api.doc('register_student', 
+             description='Upload one or more student face images. You can select multiple files at once.')
     @api.expect(api.parser()
         .add_argument('student_id', type=str, required=True, location='form', help='Student ID')
         .add_argument('name', type=str, required=True, location='form', help='Student Name')
         .add_argument('email', type=str, required=False, location='form', help='Student Email')
         .add_argument('department', type=str, required=False, location='form', help='Department')
         .add_argument('year', type=int, required=False, location='form', help='Academic Year')
-        .add_argument('images', type=FileStorage, required=True, location='files', help='Student Face Images (multiple files with same field name)', action='append'))
+        .add_argument('images', type=FileStorage, required=True, location='files', 
+                     help='Student face images - SELECT MULTIPLE FILES (different poses for better accuracy). Hold Ctrl/Cmd to select multiple.'))
     @api.response(201, 'Student registered successfully')
     @api.response(400, 'Bad request - validation error')
     @api.response(409, 'Conflict - student already exists')
     def post(self):
-        """Register a new student with one or more face images (different poses)."""
+        """Register a new student with one or more face images (different poses).
+        
+        Instructions:
+        - Click 'Choose File' and select ONE OR MORE images
+        - Hold Ctrl (Windows/Linux) or Cmd (Mac) to select multiple files
+        - Multiple poses improve recognition accuracy
+        - Each image should show the student's face clearly from different angles"""
         try:
             # Get form data
             student_id = request.form.get('student_id')
@@ -281,14 +290,16 @@ class StudentList(Resource):
             if not student_id or not name:
                 return {'error': 'student_id and name are required'}, 400
             
-            # Get image files (support both 'images' and 'image' for backwards compatibility)
+            # Get image files - getlist() handles both single and multiple files
             files = request.files.getlist('images')
+            
+            # Filter out empty files (Swagger UI sometimes sends empty file objects)
+            files = [f for f in files if f and f.filename]
+            
             if not files or len(files) == 0:
-                # Fallback to single 'image' field
-                if 'image' in request.files:
-                    files = [request.files['image']]
-                else:
-                    return {'error': 'No image files provided. Use "images" field for multiple files.'}, 400
+                return {'error': 'No image files provided. Please select at least one image file.'}, 400
+            
+            logger.info(f"Received {len(files)} image file(s) for student {student_id}")
             
             # Validate all images
             for idx, file in enumerate(files, 1):

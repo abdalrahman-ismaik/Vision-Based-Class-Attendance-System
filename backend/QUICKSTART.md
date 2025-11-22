@@ -202,6 +202,7 @@ When you register a student, the system automatically:
 7. **Updates Status** → `processing_status: "completed"`
 
 **Performance:**
+
 - Single pose: ~5-10 seconds
 - Multiple poses (3): ~15-25 seconds
 - More poses = better recognition accuracy!
