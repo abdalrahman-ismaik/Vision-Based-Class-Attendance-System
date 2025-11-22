@@ -6,7 +6,6 @@ This avoids TensorFlow/Keras compatibility issues with RetinaFace
 import os
 import sys
 import cv2
-import torch
 import numpy as np
 from PIL import Image
 import logging
@@ -19,8 +18,21 @@ FACENET_DIR = os.path.join(PROJECT_ROOT, 'FaceNet')
 if FACENET_DIR not in sys.path:
     sys.path.insert(0, FACENET_DIR)
 
-from networks.models_facenet import MobileFaceNet
-from torchvision import transforms
+# Lazy import torch and torchvision to speed up initial load
+torch = None
+transforms = None
+MobileFaceNet = None
+
+def _lazy_import_torch():
+    """Lazy import torch modules to improve startup time"""
+    global torch, transforms, MobileFaceNet
+    if torch is None:
+        import torch as _torch
+        from torchvision import transforms as _transforms
+        from networks.models_facenet import MobileFaceNet as _MobileFaceNet
+        torch = _torch
+        transforms = _transforms
+        MobileFaceNet = _MobileFaceNet
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -146,6 +158,9 @@ class SimpleFaceProcessor:
     
     def __init__(self, checkpoint_path=None, device='cpu'):
         """Initialize processor"""
+        # Lazy load torch modules
+        _lazy_import_torch()
+        
         self.device = device if torch.cuda.is_available() else 'cpu'
         
         # Initialize face detector
