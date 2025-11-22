@@ -492,6 +492,128 @@ class FaceProcessingPipeline:
         logger.info(f"Processed {student_id}: {len(augmented_images)} augmentations, embeddings saved")
         return result
     
+    def process_student_images(self, image_paths, student_id, output_dir, augment_per_image=20):
+        """
+        Process multiple student images with augmentation.
+        This is used when the mobile app sends pre-validated images from different poses.
+        
+        The mobile app provides 5 real pose variations, and we generate augmentations for each:
+        - 5 poses × 20 augmentations each = 100 total training samples
+        This combines real pose diversity with synthetic variations for maximum accuracy.
+        
+        Args:
+            image_paths: List of paths to student images (5 poses from mobile)
+            student_id: Student identifier
+            output_dir: Directory to save processed faces and embeddings
+            augment_per_image: Number of augmentations per pose (default 20)
+                               Set to 0 to use only original images without augmentation
+        
+        Returns:
+            dict with processing results or None if failed
+        """
+        logger.info(f"Processing {len(image_paths)} images for student {student_id} "
+                   f"(augment_per_image={augment_per_image})")
+        
+        # Create output directory
+        student_dir = os.path.join(output_dir, student_id)
+        os.makedirs(student_dir, exist_ok=True)
+        
+        embeddings = []
+        processed_count = 0
+        
+        for idx, image_path in enumerate(image_paths, 1):
+            try:
+                # Load image
+                image = Image.open(image_path).convert('RGB')
+                
+                # Detect faces
+                bboxes = self.face_detector.detect_faces(image)
+                
+                if len(bboxes) == 0:
+                    logger.warning(f"No face detected in image {idx} for {student_id}")
+                    continue
+                
+                # Take first/largest face
+                bbox = bboxes[0]
+                x1, y1, x2, y2 = map(int, bbox)
+                
+                # Add margin
+                w = x2 - x1
+                h = y2 - y1
+                margin = 0.2
+                margin_w = int(w * margin)
+                margin_h = int(h * margin)
+                
+                x1 = max(0, x1 - margin_w)
+                y1 = max(0, y1 - margin_h)
+                x2 = min(image.width, x2 + margin_w)
+                y2 = min(image.height, y2 + margin_h)
+                
+                # Crop face
+                face_image = image.crop((x1, y1, x2, y2))
+                
+                # Apply augmentation if requested
+                if augment_per_image > 0:
+                    # Generate augmentations for this pose
+                    # This creates augment_per_image variations including the original
+                    augmented_images = self.augmentor.generate_augmentations(
+                        face_image, num_augmentations=augment_per_image
+                    )
+                else:
+                    # Just use the original face without augmentation
+                    augmented_images = [face_image]
+                
+                # Process each augmented version
+                for aug_idx, aug_img in enumerate(augmented_images):
+                    # Resize to standard size (112x112 for MobileFaceNet)
+                    aug_img_resized = aug_img.resize((112, 112), Image.LANCZOS)
+                    
+                    # Save processed face
+                    face_path = os.path.join(student_dir, f"pose{idx}_aug{aug_idx}.jpg")
+                    aug_img_resized.save(face_path)
+                    
+                    # Generate embedding
+                    embedding = self.embedding_generator.generate_embedding(aug_img_resized)
+                    embeddings.append(embedding)
+                    processed_count += 1
+                
+                logger.info(f"Processed image {idx}/{len(image_paths)} for {student_id} "
+                           f"({len(augmented_images)} variations)")
+                
+            except Exception as e:
+                logger.error(f"Error processing image {idx} for {student_id}: {e}")
+                continue
+        
+        # Check if we got enough valid faces
+        if processed_count == 0:
+            logger.error(f"No valid faces detected for {student_id}")
+            return None
+        
+        # Calculate expected samples
+        expected_samples = len(image_paths) * (augment_per_image if augment_per_image > 0 else 1)
+        if processed_count < expected_samples * 0.5:  # Less than 50% of expected
+            logger.warning(f"Only {processed_count}/{expected_samples} samples generated for {student_id}")
+        
+        # Stack embeddings
+        embeddings = np.array(embeddings)
+        
+        # Save embeddings
+        embeddings_path = os.path.join(student_dir, "embeddings.npy")
+        np.save(embeddings_path, embeddings)
+        
+        result = {
+            'student_id': student_id,
+            'num_poses_captured': len([e for e in embeddings if e is not None]),
+            'num_samples_total': processed_count,
+            'embeddings_shape': embeddings.shape,
+            'output_dir': student_dir,
+            'embeddings_path': embeddings_path,
+            'augmentation_per_pose': augment_per_image
+        }
+        
+        logger.info(f"Processed {student_id}: {processed_count} total samples from {len(image_paths)} poses, embeddings saved")
+        return result
+    
     def train_classifier_from_data(self, data_dir, classifier_output_path):
         """
         Train classifier from processed student data

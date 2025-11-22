@@ -1,179 +1,175 @@
-# Vision-Based Class Attendance System - Backend
+# Backend - Vision-Based Class Attendance System
 
-A Flask-based REST API for managing student registration and attendance using face recognition.
+## Quick Links
+- 📖 [Structure Documentation](STRUCTURE_README.md) - Complete directory structure guide
+- 🔄 [Migration Guide](MIGRATION_GUIDE.md) - How to adapt to the new structure
+- 🏗️ [Architecture](docs/ARCHITECTURE.md) - System architecture overview
+- 🚀 [Quick Start](docs/QUICKSTART.md) - Get started quickly
+- 📚 [Complete README](docs/README_COMPLETE.md) - Comprehensive documentation
 
-## Features
-
-- 🎓 **Student Registration**: Register students with ID, name, email, department, and face image
-- 📸 **Image Upload**: Secure image upload and validation
-- 🔍 **Student Search**: Search students by name or ID
-- 📊 **Student Management**: List, view, and delete student records
-- 📝 **Swagger Documentation**: Interactive API documentation at `/api/docs`
-- ✅ **Health Check**: Monitor API status
-
-## Quick Start
-
-### 1. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Run the Server
-
-**Windows (with virtual environment):**
-```powershell
-cd c:\Users\4bais\Vision-Based-Class-Attendance-System\backend
-C:\Users\4bais\Vision-Based-Class-Attendance-System\.venv\Scripts\python.exe app.py
-```
-
-**Or if virtual environment is activated:**
-```bash
-python app.py
-```
-
-The server will start at `http://localhost:5000`
-
-### 3. Access Swagger UI
-
-Open your browser and navigate to:
-
-```
-http://localhost:5000/api/docs
-```
-
-You can test all API endpoints directly from the Swagger interface!
-
-## API Endpoints
-
-### Health Check
-
-- **GET** `/api/health/status` - Check if API is running
-
-### Students
-
-- **GET** `/api/students/` - List all registered students
-- **POST** `/api/students/` - Register a new student with face image
-- **GET** `/api/students/<student_id>` - Get specific student details
-- **DELETE** `/api/students/<student_id>` - Delete a student
-- **GET** `/api/students/search?query=<name>` - Search students
-
-### Attendance
-
-- **POST** `/api/attendance/mark` - Mark attendance (placeholder for face recognition)
-
-## How to Test with Swagger
-
-1. **Start the server**: Run `python app.py`
-2. **Open Swagger UI**: Go to `http://localhost:5000/api/docs`
-3. **Test Student Registration**:
-
-   - Click on `POST /api/students/`
-   - Click "Try it out"
-   - Fill in the form:
-     - `student_id`: e.g., "S12345"
-     - `name`: e.g., "John Doe"
-     - `email`: e.g., "john@university.edu"
-     - `department`: e.g., "Computer Science"
-     - `year`: e.g., 3
-     - `image`: Upload a face image (JPG, PNG, or BMP)
-   - Click "Execute"
-   - See the response below!
-
-4. **Test Other Endpoints**:
-   - List all students: `GET /api/students/`
-   - Get specific student: `GET /api/students/S12345`
-   - Search students: `GET /api/students/search?query=John`
-   - Delete student: `DELETE /api/students/S12345`
-
-## Project Structure
+## Directory Structure
 
 ```
 backend/
-├── app.py                  # Main Flask application
-├── requirements.txt        # Python dependencies
-├── README.md              # This file
-├── database.json          # JSON database (auto-created)
-└── uploads/               # Uploaded images directory
-    └── students/          # Student face images
-        └── <student_id>/  # Organized by student ID
+├── api/                   # API routes and endpoints
+├── services/              # Business logic (face recognition, processing)
+├── models/                # Data models and schemas
+├── utils/                 # Utility functions
+├── config/                # Configuration and settings
+├── tests/                 # Test files
+├── docs/                  # Documentation
+├── scripts/               # Maintenance scripts
+├── data/                  # JSON databases
+├── storage/               # File storage (uploads, processed faces, classifiers)
+├── app.py                # Main Flask application
+└── requirements.txt      # Python dependencies
 ```
+
+## Getting Started
+
+### Prerequisites
+- Python 3.8+
+- Virtual environment activated
+
+### Installation
+
+```bash
+# Navigate to backend
+cd backend
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python app.py
+```
+
+The API will be available at `http://localhost:5000`  
+Swagger documentation at `http://localhost:5000/api/docs`
+
+## Key Features
+
+✨ **Face Recognition**: Advanced face detection and recognition pipeline  
+👥 **Student Management**: Register and manage student profiles  
+📸 **Image Processing**: Automated face extraction and processing  
+📊 **Attendance Tracking**: Real-time attendance marking via face recognition  
+🔒 **Secure API**: RESTful API with proper validation  
+📖 **API Documentation**: Auto-generated Swagger UI  
+
+## API Endpoints
+
+- `POST /api/students/register` - Register new student with 5 face images (different poses)
+- `POST /api/attendance/mark` - Mark attendance via face recognition
+- `GET /api/students` - List all students
+- `GET /api/classes` - List all classes
+- `GET /api/health` - Health check
+
+Full API documentation available at `/api/docs` when running the server.
+
+### Student Registration
+The registration endpoint now accepts **5 face images** in a single API call. The mobile app should capture 5 different poses and send them as `image_1`, `image_2`, `image_3`, `image_4`, `image_5`.
+
+For mobile app integration details, see [Mobile Integration Guide](docs/MOBILE_INTEGRATION_GUIDE.md).
 
 ## Configuration
 
-The application uses the following default configuration:
-
-- **Host**: `0.0.0.0` (accessible from network)
-- **Port**: `5000`
-- **Max Upload Size**: 16 MB
-- **Allowed Image Formats**: PNG, JPG, JPEG, BMP
-- **Database**: JSON file (can be upgraded to SQLite/PostgreSQL)
-
-## Example: Register Student with cURL
-
-```bash
-curl -X POST "http://localhost:5000/api/students/" \
-  -F "student_id=S12345" \
-  -F "name=John Doe" \
-  -F "email=john@university.edu" \
-  -F "department=Computer Science" \
-  -F "year=3" \
-  -F "image=@/path/to/face_image.jpg"
-```
-
-## Example: Register Student with Python
+Configuration is managed through the `config/` module:
 
 ```python
-import requests
+from config import Config
 
-url = "http://localhost:5000/api/students/"
-
-data = {
-    'student_id': 'S12345',
-    'name': 'John Doe',
-    'email': 'john@university.edu',
-    'department': 'Computer Science',
-    'year': 3
-}
-
-files = {
-    'image': open('face_image.jpg', 'rb')
-}
-
-response = requests.post(url, data=data, files=files)
-print(response.json())
+# Access configuration
+database_path = Config.DATABASE_PATH
+upload_folder = Config.UPLOAD_FOLDER
 ```
 
-## Next Steps
+Environment variables can be set in `.env` (copy from `config/.env.example`).
 
-- Integrate FaceNet model for face recognition
-- Add authentication and authorization
-- Implement attendance tracking and reporting
-- Add database migrations
-- Deploy to production server
-
-## Environment Variables
-
-You can configure the application using environment variables:
+## Testing
 
 ```bash
-export FLASK_ENV=development
-export SECRET_KEY=your-secret-key
-export DATABASE_URL=sqlite:///students.db
+# Run all tests
+python -m pytest tests/
+
+# Run specific test
+python tests/test_pipeline.py
 ```
 
-## Security Notes
+## Project Structure Benefits
 
-⚠️ **Important for Production**:
+✅ **Organized**: Clear separation of concerns  
+✅ **Scalable**: Easy to extend with new features  
+✅ **Maintainable**: Straightforward to locate and modify code  
+✅ **Professional**: Follows industry best practices  
+✅ **Documented**: Comprehensive documentation in `docs/`  
 
-- Change the `SECRET_KEY` in production
-- Enable HTTPS
-- Add authentication (JWT tokens)
-- Implement rate limiting
-- Use a proper database (PostgreSQL, MySQL)
-- Add input sanitization
-- Implement file scanning for malware
+## Recent Changes
+
+🔄 **Backend Restructuring** (Nov 2025)
+- Reorganized flat structure into modular architecture
+- Created dedicated directories for different concerns
+- Updated import paths and configuration management
+- Consolidated storage and data directories
+- Improved documentation structure
+
+See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details on adapting to the new structure.
+
+## Development
+
+### Adding New Features
+
+1. **API Endpoints**: Add routes in `api/` directory
+2. **Business Logic**: Implement services in `services/`
+3. **Data Models**: Define models in `models/`
+4. **Utilities**: Add helpers in `utils/`
+5. **Tests**: Create tests in `tests/`
+6. **Documentation**: Update docs in `docs/`
+
+### Code Style
+
+- Follow PEP 8 guidelines
+- Use type hints where appropriate
+- Document functions with docstrings
+- Keep functions focused and modular
+
+## Troubleshooting
+
+### Import Errors
+Ensure you're using the new import paths:
+```python
+from services.face_processing_pipeline import FaceProcessingPipeline
+from config import Config
+```
+
+### File Not Found
+Use Config paths instead of hardcoded paths:
+```python
+from config import Config
+path = Config.DATABASE_PATH
+```
+
+### Module Not Found
+Verify you're running from the backend directory and all `__init__.py` files exist.
+
+## Contributing
+
+1. Keep the modular structure
+2. Follow the established patterns
+3. Add tests for new features
+4. Update documentation
+5. Use meaningful commit messages
 
 ## License
 
-MIT License
+[Add your license information]
+
+## Contact
+
+[Add contact information]
+
+---
+
+**For detailed information, see:**
+- [STRUCTURE_README.md](STRUCTURE_README.md) - Complete structure documentation
+- [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) - Migration instructions
+- [docs/](docs/) - Additional documentation

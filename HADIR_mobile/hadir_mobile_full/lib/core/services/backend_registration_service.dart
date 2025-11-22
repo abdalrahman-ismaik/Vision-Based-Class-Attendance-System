@@ -72,39 +72,55 @@ class BackendRegistrationService {
   
   /// Register student to backend server
   /// 
-  /// Uploads student data + one face image to backend for processing.
-  /// Backend will handle face detection, embedding generation, and storage.
+  /// Uploads student data + 5 face images from different poses to backend.
+  /// Backend will handle face detection, augmentation, embedding generation, and storage.
+  /// Backend generates 20 augmentations per pose = 100 total training samples.
   /// 
   /// Parameters:
   /// - [student]: Student entity with all details
-  /// - [imageFile]: One representative face image (best quality)
+  /// - [imageFiles]: List of exactly 5 face images from different poses (validated for sharpness)
   /// 
   /// Returns:
   /// - [BackendRegistrationResult] with success status and backend ID
   Future<BackendRegistrationResult> registerStudent({
     required Student student,
-    required File imageFile,
+    required List<File> imageFiles,
   }) async {
     try {
-      // Validate inputs
-      if (!await imageFile.exists()) {
+      // Validate input count
+      if (imageFiles.length != 5) {
         return BackendRegistrationResult.failure(
-          error: 'Image file not found: ${imageFile.path}',
+          error: 'Exactly 5 images required, got ${imageFiles.length}',
         );
       }
       
-      // Build FormData
-      final formData = FormData.fromMap({
+      // Validate all files exist
+      for (var i = 0; i < imageFiles.length; i++) {
+        if (!await imageFiles[i].exists()) {
+          return BackendRegistrationResult.failure(
+            error: 'Image ${i + 1} not found: ${imageFiles[i].path}',
+          );
+        }
+      }
+      
+      // Build FormData with 5 images as image_1 through image_5
+      final formDataMap = {
         'student_id': student.studentId,
         'name': student.fullName,
         'email': student.email,
         'department': student.department,
         'year': student.enrollmentYear ?? 0,
-        'image': await MultipartFile.fromFile(
-          imageFile.path,
-          filename: '${student.studentId}_face.jpg',
-        ),
-      });
+      };
+      
+      // Add all 5 images with correct field names
+      for (var i = 0; i < imageFiles.length; i++) {
+        formDataMap['image_${i + 1}'] = await MultipartFile.fromFile(
+          imageFiles[i].path,
+          filename: '${student.studentId}_pose${i + 1}.jpg',
+        );
+      }
+      
+      final formData = FormData.fromMap(formDataMap);
       
       // Send POST request
       final response = await _dio.post(

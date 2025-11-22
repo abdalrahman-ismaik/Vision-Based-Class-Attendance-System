@@ -1,0 +1,38 @@
+{
+  "100012344": {
+    "uuid": "4644f512-4e42-4ecd-89ae-9828dfc25806",
+    "student_id": "100012344",
+    "name": "John Doe",
+    "email": "100012344@ku.ac.ae",
+    "department": "Computer Science",
+    "year": 2024,
+    "image_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100012344\\100012344_20251117_094421.jpg",
+    "registered_at": "2025-11-17T09:44:22.051126",
+    "processing_status": "failed",
+    "processing_error": "A KerasTensor cannot be used as input to a TensorFlow function. A KerasTensor is a symbolic placeholder for a shape and dtype, used when constructing Keras Functional models or Keras Functions. You can only use it as input to a Keras layer or a Keras operation (from the namespaces `keras.layers` and `keras.ops`). You are likely doing something like:\n\n```\nx = Input(...)\n...\ntf_fn(x)  # Invalid.\n```\n\nWhat you should do instead is wrap `tf_fn` in a layer:\n\n```\nclass MyLayer(Layer):\n    def call(self, x):\n        return tf_fn(x)\n\nx = MyLayer()(x)\n```\n"
+  },
+  "100012346": {
+    "uuid": "73edb61f-9b5b-4850-a571-c914fe211b0c",
+    "student_id": "100012346",
+    "name": "John Doe",
+    "email": "100012346@ku.ac.ae",
+    "department": "Computer Science",
+    "year": 2024,
+    "image_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100012346\\100012346_20251117_102840.jpg",
+    "registered_at": "2025-11-17T10:28:40.400904",
+    "processing_status": "failed",
+    "processing_error": "Pipeline initialization failed"
+  },
+  "100012342": {
+    "uuid": "73438755-e79e-4730-b269-214dffe72a59",
+    "student_id": "100012342",
+    "name": "John Doe",
+    "email": "100012342@ku.ac.ae",
+    "department": "Computer Science",
+    "year": 2024,
+    "image_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100012342\\100012342_20251117_103612.jpg",
+    "registered_at": "2025-11-17T10:36:12.596998",
+    "processing_status": "failed",
+    "processing_error": "A KerasTensor cannot be used as input to a TensorFlow function. A KerasTensor is a symbolic placeholder for a shape and dtype, used when constructing Keras Functional models or Keras Functions. You can only use it as input to a Keras layer or a Keras operation (from the namespaces `keras.layers` and `keras.ops`). You are likely doing something like:\n\n```\nx = Input(...)\n...\ntf_fn(x)  # Invalid.\n```\n\nWhat you should do instead is wrap `tf_fn` in a layer:\n\n```\nclass MyLayer(Layer):\n    def call(self, x):\n        return tf_fn(x)\n\nx = MyLayer()(x)\n```\n"
+  }
+}

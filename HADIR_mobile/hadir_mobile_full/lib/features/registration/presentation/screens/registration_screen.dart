@@ -347,12 +347,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         final backendService = ref.read(backendRegistrationServiceProvider);
         
         // Select best quality image from captured frames
-        if (_capturedFrames.isNotEmpty) {
-          // Find frame with highest quality score
-          final bestFrame = _capturedFrames.reduce((curr, next) => 
-            curr.qualityScore > next.qualityScore ? curr : next
-          );
-          
+        if (_capturedFrames.length >= 5) {
           // Update loading dialog to show upload status
           if (mounted) {
             Navigator.of(context).pop(); // Close old dialog
@@ -368,10 +363,10 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                       children: [
                         CircularProgressIndicator(),
                         SizedBox(height: 16),
-                        Text('Uploading to server...'),
+                        Text('Uploading 5 images to server...'),
                         SizedBox(height: 8),
                         Text(
-                          'This may take a few moments',
+                          'Backend will generate 100 training samples',
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
@@ -382,27 +377,32 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
             );
           }
           
-          // Prepare image file
-          final imageFile = File(bestFrame.imageFilePath);
+          // Prepare all 5 image files from captured frames
+          final imageFiles = _capturedFrames
+              .take(5)
+              .map((frame) => File(frame.imageFilePath))
+              .toList();
           
-          // Upload to backend
+          // Upload to backend with all 5 images
           final result = await backendService.registerStudent(
             student: student,
-            imageFile: imageFile,
+            imageFiles: imageFiles,
           );
           
           backendSuccess = result.success;
           backendStatus = result.success 
-            ? '✓ Server: ${result.message ?? "Uploaded successfully"}'
+            ? '✓ Server: ${result.message ?? "Uploaded 5 images successfully"}'
             : '⚠️ Server: ${result.error ?? "Upload failed"}';
           
           print('Backend registration result: ${result.success ? "SUCCESS" : "FAILED"}');
-          if (!result.success) {
+          if (result.success) {
+            print('Backend: Uploaded 5 images, processing 100 augmented samples');
+          } else {
             print('Backend error: ${result.error}');
           }
         } else {
-          backendStatus = '⚠️ Server: No images available for upload';
-          print('No captured frames available for backend upload');
+          backendStatus = '⚠️ Server: Need at least 5 captured frames';
+          print('Insufficient captured frames (${_capturedFrames.length}/5) for backend upload');
         }
       } catch (e) {
         backendStatus = '⚠️ Server: ${e.toString()}';
@@ -1412,6 +1412,30 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                         
                         debugPrint('✅ Selected ${finalFrames.length} best frames for upload');
                         debugPrint('   Frames: ${finalFrames.map((f) => '${f.poseType.name} (${(f.qualityScore * 100).toInt()}%)').join(', ')}');
+                        
+                        // Clean up non-selected frames to free storage
+                        debugPrint('🧹 Cleaning up ${allFrames.length - finalFrames.length} non-selected frames...');
+                        final selectedPaths = finalFrames.map((f) => f.imageFilePath).toSet();
+                        int deletedCount = 0;
+                        int failedCount = 0;
+                        
+                        for (final frame in allFrames) {
+                          // Delete if this frame was not selected
+                          if (!selectedPaths.contains(frame.imageFilePath)) {
+                            try {
+                              final file = File(frame.imageFilePath);
+                              if (await file.exists()) {
+                                await file.delete();
+                                deletedCount++;
+                              }
+                            } catch (e) {
+                              debugPrint('⚠️ Failed to delete ${frame.imageFilePath}: $e');
+                              failedCount++;
+                            }
+                          }
+                        }
+                        
+                        debugPrint('✅ Cleanup complete: $deletedCount deleted, $failedCount failed, ${finalFrames.length} kept');
                         
                         if (mounted) {
                           setState(() {

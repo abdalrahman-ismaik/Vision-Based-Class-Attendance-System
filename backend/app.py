@@ -16,8 +16,11 @@ from PIL import Image
 import logging
 import threading
 
-# Import face processing pipeline
-from face_processing_pipeline import FaceProcessingPipeline
+# Import configuration
+from config import Config
+
+# Import services
+from services.face_processing_pipeline import FaceProcessingPipeline
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -44,29 +47,22 @@ def get_pipeline():
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config.from_object(Config)
 
 # Configure CORS
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Configure upload folder
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+# Configure paths from Config
+UPLOAD_FOLDER = Config.UPLOAD_FOLDER
 STUDENT_DATA_FOLDER = os.path.join(UPLOAD_FOLDER, 'students')
-PROCESSED_FACES_FOLDER = os.path.join(os.path.dirname(__file__), 'processed_faces')
-CLASSIFIERS_FOLDER = os.path.join(os.path.dirname(__file__), 'classifiers')
-
-os.makedirs(STUDENT_DATA_FOLDER, exist_ok=True)
-os.makedirs(PROCESSED_FACES_FOLDER, exist_ok=True)
-os.makedirs(CLASSIFIERS_FOLDER, exist_ok=True)
+PROCESSED_FACES_FOLDER = Config.PROCESSED_FOLDER
+CLASSIFIERS_FOLDER = Config.CLASSIFIERS_FOLDER
+DATABASE_FILE = Config.DATABASE_PATH
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['STUDENT_DATA_FOLDER'] = STUDENT_DATA_FOLDER
 app.config['PROCESSED_FACES_FOLDER'] = PROCESSED_FACES_FOLDER
 app.config['CLASSIFIERS_FOLDER'] = CLASSIFIERS_FOLDER
-
-# Database file (JSON for simplicity, can be replaced with SQLite/PostgreSQL)
-DATABASE_FILE = os.path.join(os.path.dirname(__file__), 'database.json')
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
@@ -212,6 +208,49 @@ def save_student_image(file, student_id):
         return None, f"Invalid image file: {str(e)}"
 
 
+def save_student_images(files, student_id):
+    """Save multiple student face images to the uploads folder.
+    
+    Args:
+        files: List of FileStorage objects
+        student_id: Student identifier
+    
+    Returns:
+        tuple: (list of saved paths, error message or None)
+    """
+    # Create student-specific folder
+    student_folder = os.path.join(app.config['STUDENT_DATA_FOLDER'], student_id)
+    os.makedirs(student_folder, exist_ok=True)
+    
+    saved_paths = []
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    for idx, file in enumerate(files, 1):
+        # Generate unique filename
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"{student_id}_pose{idx}_{timestamp}.{ext}"
+        filepath = os.path.join(student_folder, filename)
+        
+        # Save the file
+        file.save(filepath)
+        
+        # Validate it's a valid image
+        try:
+            img = Image.open(filepath)
+            img.verify()
+            saved_paths.append(filepath)
+            logger.info(f"Image {idx} saved successfully: {filepath}")
+        except Exception as e:
+            # Clean up saved files on error
+            for path in saved_paths:
+                if os.path.exists(path):
+                    os.remove(path)
+            logger.error(f"Invalid image file {idx}: {e}")
+            return None, f"Invalid image file {idx}: {str(e)}"
+    
+    return saved_paths, None
+
+
 # ==================== API Endpoints ====================
 
 @ns_health.route('/status')
@@ -254,12 +293,16 @@ class StudentList(Resource):
         .add_argument('email', type=str, required=False, location='form', help='Student Email')
         .add_argument('department', type=str, required=False, location='form', help='Department')
         .add_argument('year', type=int, required=False, location='form', help='Academic Year')
-        .add_argument('image', type=FileStorage, required=True, location='files', help='Student Face Image'))
+        .add_argument('image_1', type=FileStorage, required=True, location='files', help='Face Image - Front Pose')
+        .add_argument('image_2', type=FileStorage, required=True, location='files', help='Face Image - Pose 2')
+        .add_argument('image_3', type=FileStorage, required=True, location='files', help='Face Image - Pose 3')
+        .add_argument('image_4', type=FileStorage, required=True, location='files', help='Face Image - Pose 4')
+        .add_argument('image_5', type=FileStorage, required=True, location='files', help='Face Image - Pose 5'))
     @api.response(201, 'Student registered successfully')
     @api.response(400, 'Bad request - validation error')
     @api.response(409, 'Conflict - student already exists')
     def post(self):
-        """Register a new student with face image."""
+        """Register a new student with 5 face images from different poses."""
         try:
             # Get form data
             student_id = request.form.get('student_id')
@@ -272,16 +315,21 @@ class StudentList(Resource):
             if not student_id or not name:
                 return {'error': 'student_id and name are required'}, 400
             
-            # Get image file
-            if 'image' not in request.files:
-                return {'error': 'No image file provided'}, 400
-            
-            file = request.files['image']
-            
-            # Validate image
-            is_valid, message = validate_image(file)
-            if not is_valid:
-                return {'error': message}, 400
+            # Get image files (5 images required)
+            image_files = []
+            for i in range(1, 6):
+                image_key = f'image_{i}'
+                if image_key not in request.files:
+                    return {'error': f'Missing {image_key}. All 5 images are required.'}, 400
+                
+                file = request.files[image_key]
+                
+                # Validate each image
+                is_valid, message = validate_image(file)
+                if not is_valid:
+                    return {'error': f'{image_key}: {message}'}, 400
+                
+                image_files.append(file)
             
             # Check if student already exists
             database = load_database()
@@ -291,8 +339,8 @@ class StudentList(Resource):
                     'student_id': student_id
                 }, 409
             
-            # Save image
-            image_path, error = save_student_image(file, student_id)
+            # Save all images
+            image_paths, error = save_student_images(image_files, student_id)
             if error:
                 return {'error': error}, 400
             
@@ -305,7 +353,8 @@ class StudentList(Resource):
                 'email': email,
                 'department': department,
                 'year': year,
-                'image_path': image_path,
+                'image_paths': image_paths,
+                'num_images': len(image_paths),
                 'registered_at': datetime.now().isoformat(),
                 'processing_status': 'pending'
             }
@@ -334,12 +383,14 @@ class StudentList(Resource):
                     
                     logger.info(f"Pipeline initialized, starting face processing for {student_id}")
                     
-                    # Process student image
-                    result = pipeline.process_student_image(
-                        image_path=image_path,
+                    # Process multiple student images with full augmentation
+                    # 5 poses × 20 augmentations each = 100 total training samples
+                    # This combines real pose diversity with synthetic variations for best accuracy
+                    result = pipeline.process_student_images(
+                        image_paths=image_paths,
                         student_id=student_id,
                         output_dir=app.config['PROCESSED_FACES_FOLDER'],
-                        num_augmentations=20
+                        augment_per_image=20  # Generate 20 augmentations per pose
                     )
                     
                     # Reload database again before updating
@@ -349,15 +400,69 @@ class StudentList(Resource):
                         # Update database with processing results
                         db[student_id]['processing_status'] = 'completed'
                         db[student_id]['processed_at'] = datetime.now().isoformat()
-                        db[student_id]['num_augmentations'] = result['num_augmentations']
+                        db[student_id]['num_poses'] = result['num_poses_captured']
+                        db[student_id]['num_samples'] = result['num_samples_total']
                         db[student_id]['embeddings_path'] = result['embeddings_path']
                         save_database(db)
-                        logger.info(f"✓ Face processing completed for {student_id}: {result['num_augmentations']} augmentations")
+                        logger.info(f"✓ Face processing completed for {student_id}: {result['num_samples_total']} samples from {result['num_poses_captured']} poses")
+                        
+                        # Automatically retrain classifier with new student data
+                        try:
+                            logger.info(f"Retraining classifier with new student {student_id}...")
+                            classifier_path = os.path.join(
+                                app.config['CLASSIFIERS_FOLDER'],
+                                'face_classifier.pkl'
+                            )
+                            
+                            # Ensure classifiers directory exists
+                            os.makedirs(app.config['CLASSIFIERS_FOLDER'], exist_ok=True)
+                            
+                            # Train classifier from all processed student data
+                            classifier_result = pipeline.train_classifier_from_data(
+                                data_dir=app.config['PROCESSED_FACES_FOLDER'],
+                                classifier_output_path=classifier_path
+                            )
+                            
+                            # Update classifier metadata
+                            classifier_metadata = {
+                                'trained_at': datetime.now().isoformat(),
+                                'n_students': classifier_result['n_students'],
+                                'n_embeddings': classifier_result['n_embeddings'],
+                                'train_accuracy': classifier_result['metrics']['train_accuracy'],
+                                'test_accuracy': classifier_result['metrics']['test_accuracy'],
+                                'classifier_path': classifier_path
+                            }
+                            
+                            # Save classifier metadata
+                            metadata_path = os.path.join(
+                                app.config['CLASSIFIERS_FOLDER'],
+                                'classifier_metadata.json'
+                            )
+                            with open(metadata_path, 'w') as f:
+                                json.dump(classifier_metadata, f, indent=2)
+                            
+                            logger.info(f"✓ Classifier retrained successfully: {classifier_result['n_students']} students, "
+                                      f"{classifier_result['n_embeddings']} samples, "
+                                      f"test_acc={classifier_result['metrics']['test_accuracy']:.3f}")
+                            
+                            # Update database with classifier training status
+                            db = load_database()
+                            db[student_id]['classifier_updated'] = True
+                            db[student_id]['classifier_trained_at'] = datetime.now().isoformat()
+                            save_database(db)
+                            
+                        except Exception as classifier_error:
+                            logger.error(f"✗ Error retraining classifier after {student_id}: {classifier_error}", exc_info=True)
+                            # Don't fail the entire registration - just log the error
+                            db = load_database()
+                            db[student_id]['classifier_updated'] = False
+                            db[student_id]['classifier_error'] = str(classifier_error)
+                            save_database(db)
                     else:
                         db[student_id]['processing_status'] = 'failed'
-                        db[student_id]['processing_error'] = 'No face detected'
+                        db[student_id]['processing_error'] = 'No faces detected in images'
                         save_database(db)
-                        logger.warning(f"✗ Face processing failed for {student_id}: No face detected")
+                        logger.warning(f"✗ Face processing failed for {student_id}: No faces detected")
                     
                 except Exception as e:
                     logger.error(f"✗ Error processing face for {student_id}: {e}", exc_info=True)
@@ -375,8 +480,10 @@ class StudentList(Resource):
             logger.info(f"Background thread started for {student_id}")
             
             return {
-                'message': 'Student registered successfully. Face processing started in background.',
-                'student': student_data
+                'success': True,
+                'message': 'Student registered successfully. Processing 5 face images in background.',
+                'student': student_data,
+                'images_received': len(image_paths)
             }, 201
             
         except Exception as e:
