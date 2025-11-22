@@ -13,8 +13,9 @@ import logging
 from pathlib import Path
 
 # Add FaceNet directory to path
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-FACENET_DIR = os.path.join(os.path.dirname(BACKEND_DIR), 'FaceNet')
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/services
+PROJECT_ROOT = os.path.dirname(os.path.dirname(BACKEND_DIR))  # project root
+FACENET_DIR = os.path.join(PROJECT_ROOT, 'FaceNet')
 if FACENET_DIR not in sys.path:
     sys.path.insert(0, FACENET_DIR)
 
