@@ -21,6 +21,7 @@ import requests
 import threading
 import logging
 from typing import Generator, Dict, Tuple, Optional
+import os
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -225,7 +226,7 @@ class RealtimeRecognitionSystem:
     
     def __init__(self, 
                  camera_source: int = 0,
-                 backend_url: str = 'http://127.0.0.1:5000/api/students/recognize'):
+                 backend_url: str = 'http://127.0.0.1:5002/api/students/recognize'):
         """
         Initialize real-time recognition system.
         
@@ -233,9 +234,14 @@ class RealtimeRecognitionSystem:
             camera_source: Camera index or video file path
             backend_url: Backend recognition API endpoint
         """
-        self.backend_url = backend_url
+        # Allow overriding via environment variable if provided
+        self.backend_url = os.environ.get('BACKEND_RECOGNITION_URL', backend_url)
         self.detector = FaceDetector()
         self.tracker = FaceTracker(iou_threshold=0.3, max_disappeared=10)
+
+        # Track unique registered IDs and count
+        self.registered_ids: set[str] = set()
+        self.registered_count: int = 0
         
         # Open camera
         self.camera = cv2.VideoCapture(camera_source, cv2.CAP_DSHOW)
@@ -272,15 +278,15 @@ class RealtimeRecognitionSystem:
             data = response.json()
             
             # Parse response
-            if data.get('recognized') and data.get('student_id') != 'Unknown':
-                label = data.get('student_id', 'Unknown')
+            if data.get('recognized') and data.get('student_id') not in (None, 'Unknown'):
+                student_id = data.get('student_id', 'Unknown')
+                label = student_id  # Use ID as the label per requirement
                 confidence = data.get('confidence', 0.0)
-                
-                # Get student info if available
-                student_info = data.get('student_info')
-                if student_info:
-                    name = student_info.get('name', label)
-                    label = f"{name} ({label})"
+
+                # Increment unique registered count only once per unique student ID
+                if student_id not in self.registered_ids:
+                    self.registered_ids.add(student_id)
+                    self.registered_count += 1
             else:
                 label = 'Unknown'
                 confidence = data.get('confidence', 0.0)
@@ -422,7 +428,7 @@ class RealtimeRecognitionSystem:
                 self.draw_detection(frame, face_id, face_data)
             
             # Add frame info
-            info_text = f"Faces: {len(tracked_faces)} | Frame: {frame_count}"
+            info_text = f"Faces: {len(tracked_faces)} | Registered: {self.registered_count} | Frame: {frame_count}"
             cv2.putText(
                 frame, info_text, (10, frame.shape[0] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1
