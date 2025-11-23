@@ -60,7 +60,9 @@ class FaceDetector:
             List of bounding boxes [x1, y1, x2, y2]
         """
         if isinstance(image, Image.Image):
+            # Convert PIL Image (RGB) to numpy array (BGR) for RetinaFace
             image = np.array(image)
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         
         return self.detector.detect_faces(image)
 
@@ -222,15 +224,24 @@ class EmbeddingGenerator:
         
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
         
-        if 'model_state_dict' in checkpoint:
-            model.load_state_dict(checkpoint['model_state_dict'])
-        else:
-            model.load_state_dict(checkpoint)
+        try:
+            if 'model_state_dict' in checkpoint:
+                model.load_state_dict(checkpoint['model_state_dict'], strict=False)
+            else:
+                model.load_state_dict(checkpoint, strict=False)
+            logger.info(f"✓ Loaded FaceNet model from {checkpoint_path}")
+        except Exception as e:
+            logger.warning(f"Failed to load model with strict=False: {e}")
+            # Try loading with strict=True as fallback
+            if 'model_state_dict' in checkpoint:
+                model.load_state_dict(checkpoint['model_state_dict'])
+            else:
+                model.load_state_dict(checkpoint)
+            logger.info(f"✓ Loaded FaceNet model from {checkpoint_path} (strict mode)")
         
         model.to(self.device)
         model.eval()
         
-        logger.info(f"Loaded FaceNet model from {checkpoint_path}")
         return model
     
     def _get_transform(self):
