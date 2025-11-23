@@ -258,26 +258,28 @@ class StudentList(Resource):
         }, 200
     
     @api.doc('register_student', 
-             description='Upload one or more student face images. You can select multiple files at once.')
+             description='Upload one or more student face images. In Swagger UI, click "Add string item" to upload multiple files.')
     @api.expect(api.parser()
         .add_argument('student_id', type=str, required=True, location='form', help='Student ID')
         .add_argument('name', type=str, required=True, location='form', help='Student Name')
         .add_argument('email', type=str, required=False, location='form', help='Student Email')
         .add_argument('department', type=str, required=False, location='form', help='Department')
         .add_argument('year', type=int, required=False, location='form', help='Academic Year')
-        .add_argument('images', type=FileStorage, required=True, location='files', 
-                     help='Student face images - SELECT MULTIPLE FILES (different poses for better accuracy). Hold Ctrl/Cmd to select multiple.'))
+        .add_argument('images', type=FileStorage, required=True, location='files', action='append',
+                     help='Student face images (different poses for better accuracy). Click "Add string item" below to upload multiple files.'))
     @api.response(201, 'Student registered successfully')
     @api.response(400, 'Bad request - validation error')
     @api.response(409, 'Conflict - student already exists')
     def post(self):
         """Register a new student with one or more face images (different poses).
         
-        Instructions:
-        - Click 'Choose File' and select ONE OR MORE images
-        - Hold Ctrl (Windows/Linux) or Cmd (Mac) to select multiple files
-        - Multiple poses improve recognition accuracy
-        - Each image should show the student's face clearly from different angles"""
+        Swagger UI Instructions:
+        - Fill in student details (student_id, name, etc.)
+        - Click "Choose File" to select first image
+        - Click "Add string item" button to add more file upload fields
+        - Upload multiple images from different angles for better accuracy
+        
+        Note: The backend automatically handles multiple files sent with the same 'images' field name."""
         try:
             # Get form data
             student_id = request.form.get('student_id')

@@ -103,24 +103,30 @@ class BackendRegistrationService {
         }
       }
       
-      // Build FormData with 5 images as image_1 through image_5
-      final formDataMap = {
-        'student_id': student.studentId,
-        'name': student.fullName,
-        'email': student.email,
-        'department': student.department,
-        'year': student.enrollmentYear ?? 0,
-      };
+      // Build FormData with 5 images under the same 'images' field name
+      // Backend uses request.files.getlist('images') to handle multiple files
+      final formData = FormData();
       
-      // Add all 5 images with correct field names
+      // Add student data fields
+      formData.fields.addAll([
+        MapEntry('student_id', student.studentId),
+        MapEntry('name', student.fullName),
+        MapEntry('email', student.email),
+        MapEntry('department', student.department),
+        MapEntry('year', (student.enrollmentYear ?? 0).toString()),
+      ]);
+      
+      // Add all 5 images with the SAME field name 'images'
+      // This allows backend to use request.files.getlist('images')
       for (var i = 0; i < imageFiles.length; i++) {
-        formDataMap['image_${i + 1}'] = await MultipartFile.fromFile(
-          imageFiles[i].path,
-          filename: '${student.studentId}_pose${i + 1}.jpg',
-        );
+        formData.files.add(MapEntry(
+          'images',  // Same field name for all images
+          await MultipartFile.fromFile(
+            imageFiles[i].path,
+            filename: '${student.studentId}_pose${i + 1}.jpg',
+          ),
+        ));
       }
-      
-      final formData = FormData.fromMap(formDataMap);
       
       // Send POST request
       final response = await _dio.post(
@@ -189,7 +195,7 @@ class BackendRegistrationService {
   Future<bool> isBackendAvailable() async {
     try {
       final response = await _dio.get(
-        '/health',
+        '/health/status',  // Correct endpoint path
         options: Options(
           sendTimeout: const Duration(seconds: 5),
           receiveTimeout: const Duration(seconds: 5),

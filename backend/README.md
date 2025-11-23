@@ -1,34 +1,60 @@
 # Backend - Vision-Based Class Attendance System
 
-## Quick Links
-- 📖 [Structure Documentation](STRUCTURE_README.md) - Complete directory structure guide
-- 🔄 [Migration Guide](MIGRATION_GUIDE.md) - How to adapt to the new structure
+## 🎉 Recently Reorganized!
+The backend has been reorganized for better maintainability and scalability!
+
+## 📚 Documentation Hub
+
+### Reorganization Resources (NEW!)
+- 🗂️ [**Quick Reference**](QUICK_REFERENCE.md) - Start here! Quick commands and tips
+- 📋 [**Migration Checklist**](MIGRATION_CHECKLIST.md) - Step-by-step migration guide
+- 📖 [**Reorganization Guide**](REORGANIZATION_GUIDE.md) - Complete reorganization details
+- 📝 [**Reorganization Summary**](REORGANIZATION_SUMMARY.md) - What changed and why
+- 🎨 [**Before & After**](BEFORE_AFTER.md) - Visual comparison
+
+### Existing Documentation
 - 🏗️ [Architecture](docs/ARCHITECTURE.md) - System architecture overview
 - 🚀 [Quick Start](docs/QUICKSTART.md) - Get started quickly
 - 📚 [Complete README](docs/README_COMPLETE.md) - Comprehensive documentation
 
-## Directory Structure
+## Directory Structure (NEW)
 
 ```
 backend/
-├── api/                   # API routes and endpoints
-├── services/              # Business logic (face recognition, processing)
-├── models/                # Data models and schemas
-├── utils/                 # Utility functions
-├── config/                # Configuration and settings
-├── tests/                 # Test files
-├── docs/                  # Documentation
-├── scripts/               # Maintenance scripts
-├── data/                  # JSON databases
-├── storage/               # File storage (uploads, processed faces, classifiers)
-├── app.py                # Main Flask application
-└── requirements.txt      # Python dependencies
+├── api/                       # API routes and endpoints
+│   ├── health.py             # Health check endpoints
+│   ├── students.py           # Student management (coming soon)
+│   ├── classes.py            # Class management (coming soon)
+│   └── attendance.py         # Attendance tracking (coming soon)
+├── config/                    # Configuration management
+│   └── settings.py           # Centralized configuration
+├── models/                    # Data models and schemas
+│   └── schemas.py            # API schemas for Swagger
+├── services/                  # Business logic
+│   └── face_processing_pipeline.py
+├── utils/                     # Utility functions
+│   ├── database.py           # Database operations
+│   └── file_handler.py       # File handling utilities
+├── data/                      # JSON databases (centralized)
+│   ├── database.json         # Students database
+│   └── classes.json          # Classes database
+├── storage/                   # File storage (centralized)
+│   ├── uploads/
+│   ├── processed_faces/
+│   └── classifiers/
+├── tests/                     # Test files
+├── docs/                      # Documentation
+├── scripts/                   # Maintenance scripts
+│   └── reorganize_backend.ps1  # Reorganization script
+├── main.py                   # NEW: Application factory (recommended)
+├── app.py                    # LEGACY: Original app (still works)
+└── requirements.txt          # Python dependencies
 ```
 
 ## Getting Started
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.11+ (recommended)
 - Virtual environment activated
 
 ### Installation
@@ -37,15 +63,45 @@ backend/
 # Navigate to backend
 cd backend
 
+# Activate virtual environment
+.\.venv311\Scripts\Activate.ps1  # Windows PowerShell
+# or
+source .venv311/bin/activate     # Linux/Mac
+
 # Install dependencies
 pip install -r requirements.txt
+```
 
-# Run the application
+### Running the Application
+
+**Option 1: New Structure (Recommended)**
+```bash
+# Using new application factory pattern
+python main.py
+```
+
+**Option 2: Legacy Support**
+```bash
+# Using original app.py (still works)
 python app.py
 ```
 
 The API will be available at `http://localhost:5000`  
 Swagger documentation at `http://localhost:5000/api/docs`
+
+### First Time Setup
+
+If you're setting up the reorganized structure for the first time:
+
+```powershell
+# Run the reorganization script
+.\scripts\reorganize_backend.ps1
+```
+
+This will:
+- Consolidate duplicate database files
+- Move storage folders to centralized location
+- Backup old files (marked as `.deprecated_*`)
 
 ## Key Features
 

@@ -2,11 +2,44 @@
 Configuration Module
 Contains application configuration and settings.
 """
+from .settings import (
+    BASE_DIR,
+    SECRET_KEY,
+    DEBUG,
+    HOST,
+    PORT,
+    UPLOAD_FOLDER,
+    STUDENT_DATA_FOLDER,
+    PROCESSED_FACES_FOLDER,
+    CLASSIFIERS_FOLDER,
+    DATABASE_FILE,
+    CLASSES_FILE,
+    ALLOWED_EXTENSIONS,
+    ensure_directories,
+    get_config
+)
+
+__all__ = [
+    'BASE_DIR',
+    'SECRET_KEY',
+    'DEBUG',
+    'HOST',
+    'PORT',
+    'UPLOAD_FOLDER',
+    'STUDENT_DATA_FOLDER',
+    'PROCESSED_FACES_FOLDER',
+    'CLASSIFIERS_FOLDER',
+    'DATABASE_FILE',
+    'CLASSES_FILE',
+    'ALLOWED_EXTENSIONS',
+    'ensure_directories',
+    'get_config'
+]
 
 import os
 from pathlib import Path
 
-# Base paths
+# Base paths (kept for backward compatibility)
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / 'data'
 STORAGE_DIR = BASE_DIR / 'storage'
