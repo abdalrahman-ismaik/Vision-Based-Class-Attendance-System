@@ -1,0 +1,463 @@
+{
+  "100012344": {
+    "uuid": "4644f512-4e42-4ecd-89ae-9828dfc25806",
+    "student_id": "100012344",
+    "name": "John Doe",
+    "email": "100012344@ku.ac.ae",
+    "department": "Computer Science",
+    "year": 2024,
+    "image_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100012344\\100012344_20251117_094421.jpg",
+    "registered_at": "2025-11-17T09:44:22.051126",
+    "processing_status": "failed",
+    "processing_error": "A KerasTensor cannot be used as input to a TensorFlow function. A KerasTensor is a symbolic placeholder for a shape and dtype, used when constructing Keras Functional models or Keras Functions. You can only use it as input to a Keras layer or a Keras operation (from the namespaces `keras.layers` and `keras.ops`). You are likely doing something like:\n\n```\nx = Input(...)\n...\ntf_fn(x)  # Invalid.\n```\n\nWhat you should do instead is wrap `tf_fn` in a layer:\n\n```\nclass MyLayer(Layer):\n    def call(self, x):\n        return tf_fn(x)\n\nx = MyLayer()(x)\n```\n"
+  },
+  "100012346": {
+    "uuid": "73edb61f-9b5b-4850-a571-c914fe211b0c",
+    "student_id": "100012346",
+    "name": "John Doe",
+    "email": "100012346@ku.ac.ae",
+    "department": "Computer Science",
+    "year": 2024,
+    "image_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100012346\\100012346_20251117_102840.jpg",
+    "registered_at": "2025-11-17T10:28:40.400904",
+    "processing_status": "failed",
+    "processing_error": "Pipeline initialization failed"
+  },
+  "100012342": {
+    "uuid": "73438755-e79e-4730-b269-214dffe72a59",
+    "student_id": "100012342",
+    "name": "John Doe",
+    "email": "100012342@ku.ac.ae",
+    "department": "Computer Science",
+    "year": 2024,
+    "image_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100012342\\100012342_20251117_103612.jpg",
+    "registered_at": "2025-11-17T10:36:12.596998",
+    "processing_status": "failed",
+    "processing_error": "A KerasTensor cannot be used as input to a TensorFlow function. A KerasTensor is a symbolic placeholder for a shape and dtype, used when constructing Keras Functional models or Keras Functions. You can only use it as input to a Keras layer or a Keras operation (from the namespaces `keras.layers` and `keras.ops`). You are likely doing something like:\n\n```\nx = Input(...)\n...\ntf_fn(x)  # Invalid.\n```\n\nWhat you should do instead is wrap `tf_fn` in a layer:\n\n```\nclass MyLayer(Layer):\n    def call(self, x):\n        return tf_fn(x)\n\nx = MyLayer()(x)\n```\n"
+  },
+  "100064692": {
+    "uuid": "573fba21-bf68-4fff-86fd-3fd92268acc5",
+    "student_id": "100064692",
+    "name": "Albert Einstein",
+    "email": "albert@example.com",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\100064692_pose1_20251122_175529.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\100064692_pose2_20251122_175529.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\100064692_pose3_20251122_175529.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\100064692_pose4_20251122_175529.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\100064692_pose5_20251122_175529.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T17:55:29.430145",
+    "processing_status": "failed",
+    "processing_error": "Pipeline initialization failed"
+  },
+  "100064693": {
+    "uuid": "5223c0fa-95ac-4a38-8610-cbd1918f4b21",
+    "student_id": "100064693",
+    "name": "Albert Einstein",
+    "email": "albert@example.com",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064693\\100064693_pose1_20251122_180050.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064693\\100064693_pose2_20251122_180050.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064693\\100064693_pose3_20251122_180050.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064693\\100064693_pose4_20251122_180050.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064693\\100064693_pose5_20251122_180050.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T18:00:50.990480",
+    "processing_status": "failed",
+    "processing_error": "Pipeline initialization failed"
+  },
+  "100064694": {
+    "uuid": "b99f42f2-8531-4556-8c1d-f8463fcde549",
+    "student_id": "100064694",
+    "name": "Albert",
+    "email": "",
+    "department": "",
+    "year": null,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064694\\100064694_pose1_20251122_180346.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064694\\100064694_pose2_20251122_180346.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064694\\100064694_pose3_20251122_180346.jpg"
+    ],
+    "num_poses": 3,
+    "registered_at": "2025-11-22T18:03:46.583571",
+    "processing_status": "failed",
+    "processing_error": "No face detected"
+  },
+  "100064695": {
+    "uuid": "e57031df-9087-425e-83a5-4083e01a94f8",
+    "student_id": "100064695",
+    "name": "Albert Einstein",
+    "email": "albert@example.com",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064695\\100064695_pose1_20251122_180719.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064695\\100064695_pose2_20251122_180719.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064695\\100064695_pose3_20251122_180719.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064695\\100064695_pose4_20251122_180719.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064695\\100064695_pose5_20251122_180720.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T18:07:20.058426",
+    "processing_status": "failed",
+    "processing_error": "Pipeline initialization failed"
+  },
+  "100064696": {
+    "uuid": "8c0ccf42-957e-4f2c-8f38-e9f799a84b86",
+    "student_id": "100064696",
+    "name": "Albert",
+    "email": "",
+    "department": "",
+    "year": null,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064696\\100064696_pose1_20251122_180743.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064696\\100064696_pose2_20251122_180743.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064696\\100064696_pose3_20251122_180743.jpg"
+    ],
+    "num_poses": 3,
+    "registered_at": "2025-11-22T18:07:43.040119",
+    "processing_status": "failed",
+    "processing_error": "Pipeline initialization failed"
+  },
+  "100064697": {
+    "uuid": "f790a9aa-aaa9-496f-b04a-ec991af4f5b1",
+    "student_id": "100064697",
+    "name": "Albert",
+    "email": "",
+    "department": "",
+    "year": null,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064697\\100064697_pose1_20251122_181049.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064697\\100064697_pose2_20251122_181049.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064697\\100064697_pose3_20251122_181049.jpg"
+    ],
+    "num_poses": 3,
+    "registered_at": "2025-11-22T18:10:49.215664",
+    "processing_status": "failed",
+    "processing_error": "Pipeline initialization failed"
+  },
+  "100064698": {
+    "uuid": "e4eb3b20-122b-441b-bd02-f82f1b4463df",
+    "student_id": "100064698",
+    "name": "Test Student",
+    "email": "",
+    "department": "",
+    "year": null,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064698\\100064698_pose1_20251122_181329.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064698\\100064698_pose2_20251122_181329.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064698\\100064698_pose3_20251122_181329.jpg"
+    ],
+    "num_poses": 3,
+    "registered_at": "2025-11-22T18:13:29.608929",
+    "processing_status": "failed",
+    "processing_error": "Pipeline initialization failed"
+  },
+  "100064699": {
+    "uuid": "f317ff68-1517-437c-9761-af6a88b01688",
+    "student_id": "100064699",
+    "name": "Albert Einstein",
+    "email": "albert@example.com",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064699\\100064699_pose1_20251122_181437.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064699\\100064699_pose2_20251122_181437.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064699\\100064699_pose3_20251122_181437.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064699\\100064699_pose4_20251122_181437.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064699\\100064699_pose5_20251122_181437.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T18:14:37.424518",
+    "processing_status": "failed",
+    "processing_error": "Pipeline initialization failed"
+  },
+  "100064639": {
+    "uuid": "27ed3bf2-b551-47b3-8dfb-42e5f4edd3e3",
+    "student_id": "100064639",
+    "name": "Albert Einstein",
+    "email": "albert@example.com",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064639\\100064639_pose1_20251122_181730.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064639\\100064639_pose2_20251122_181730.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064639\\100064639_pose3_20251122_181730.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064639\\100064639_pose4_20251122_181730.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064639\\100064639_pose5_20251122_181730.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T18:17:30.356609",
+    "processing_status": "failed",
+    "processing_error": "Pipeline initialization failed"
+  },
+  "100064700": {
+    "uuid": "d2e570ea-a22b-4e70-9146-634e282b6291",
+    "student_id": "100064700",
+    "name": "Albert Einstein",
+    "email": "albert@example.com",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064700\\100064700_pose1_20251122_181936.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064700\\100064700_pose2_20251122_181936.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064700\\100064700_pose3_20251122_181936.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064700\\100064700_pose4_20251122_181936.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064700\\100064700_pose5_20251122_181936.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T18:19:36.557940",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T18:19:41.358648",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\100064700\\embeddings.npy"
+  },
+  "100064701": {
+    "uuid": "33f694b3-0b0e-4c6b-853c-7944c8e58e64",
+    "student_id": "100064701",
+    "name": "Isaac Newton",
+    "email": "isaac@example.com",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064701\\100064701_pose1_20251122_182300.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064701\\100064701_pose2_20251122_182300.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064701\\100064701_pose3_20251122_182300.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064701\\100064701_pose4_20251122_182300.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064701\\100064701_pose5_20251122_182300.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T18:23:00.162434",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T18:23:01.153747",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\100064701\\embeddings.npy"
+  },
+  "100001": {
+    "uuid": "5faf2618-bfc4-4196-adbd-35f2ae0ad31b",
+    "student_id": "100001",
+    "name": "Albert Einstein",
+    "email": "albert.einstein@physics.edu",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100001\\100001_pose1_20251122_194217.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100001\\100001_pose2_20251122_194217.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100001\\100001_pose3_20251122_194217.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100001\\100001_pose4_20251122_194217.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100001\\100001_pose5_20251122_194217.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T19:42:17.246738",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T19:42:18.485756",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\100001\\embeddings.npy"
+  },
+  "100002": {
+    "uuid": "ded79779-eb42-4602-b2fc-747fcce6a1fa",
+    "student_id": "100002",
+    "name": "Alan Turing",
+    "email": "alan.turing@cs.edu",
+    "department": "Computer Science",
+    "year": 3,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100002\\100002_pose1_20251122_194218.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100002\\100002_pose2_20251122_194218.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100002\\100002_pose3_20251122_194218.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100002\\100002_pose4_20251122_194218.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100002\\100002_pose5_20251122_194218.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100002\\100002_pose6_20251122_194218.jpg"
+    ],
+    "num_poses": 6,
+    "registered_at": "2025-11-22T19:42:18.419023",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T19:42:18.840899",
+    "num_poses_captured": 6,
+    "num_samples_total": 120,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\100002\\embeddings.npy"
+  },
+  "100003": {
+    "uuid": "453bfa3a-370c-4197-a5dc-467e0029d17a",
+    "student_id": "100003",
+    "name": "Isaac Newton",
+    "email": "isaac.newton@physics.edu",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100003\\100003_pose1_20251122_194219.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100003\\100003_pose2_20251122_194219.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100003\\100003_pose3_20251122_194219.jpg"
+    ],
+    "num_poses": 3,
+    "registered_at": "2025-11-22T19:42:19.530748",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T19:42:19.760254",
+    "num_poses_captured": 3,
+    "num_samples_total": 60,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\100003\\embeddings.npy"
+  },
+  "100004": {
+    "uuid": "d881fdf7-fc5b-44b2-97c0-957a87491acd",
+    "student_id": "100004",
+    "name": "Lionel Messi",
+    "email": "lionel.messi@sports.edu",
+    "department": "Sports Science",
+    "year": 2,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100004\\100004_pose1_20251122_194220.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100004\\100004_pose2_20251122_194220.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100004\\100004_pose3_20251122_194220.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100004\\100004_pose4_20251122_194220.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100004\\100004_pose5_20251122_194220.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T19:42:20.694758",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T19:42:22.005030",
+    "num_poses_captured": 4,
+    "num_samples_total": 80,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\100004\\embeddings.npy"
+  },
+  "100005": {
+    "uuid": "5eddebe2-08f0-4096-8989-a47936df05b4",
+    "student_id": "100005",
+    "name": "Mahmoud Darwish",
+    "email": "mahmoud.darwish@literature.edu",
+    "department": "Literature",
+    "year": 3,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100005\\100005_pose1_20251122_194221.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100005\\100005_pose2_20251122_194221.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100005\\100005_pose3_20251122_194221.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100005\\100005_pose4_20251122_194221.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100005\\100005_pose5_20251122_194221.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T19:42:21.893639",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T19:42:22.261413",
+    "num_poses_captured": 4,
+    "num_samples_total": 80,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\100005\\embeddings.npy"
+  },
+  "226215": {
+    "uuid": "d6cd6002-e6d1-4b70-86a9-9f0cfa347295",
+    "student_id": "226215",
+    "name": "Albert Einstein",
+    "email": "albert.einstein@physics.edu",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226215\\226215_pose1_20251122_194334.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226215\\226215_pose2_20251122_194334.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226215\\226215_pose3_20251122_194334.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226215\\226215_pose4_20251122_194334.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226215\\226215_pose5_20251122_194334.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T19:43:34.726381",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T19:43:35.408655",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\226215\\embeddings.npy"
+  },
+  "226216": {
+    "uuid": "b9b1c777-9ae4-481d-923a-29cb05f416e2",
+    "student_id": "226216",
+    "name": "Alan Turing",
+    "email": "alan.turing@cs.edu",
+    "department": "Computer Science",
+    "year": 3,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226216\\226216_pose1_20251122_194335.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226216\\226216_pose2_20251122_194335.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226216\\226216_pose3_20251122_194335.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226216\\226216_pose4_20251122_194335.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226216\\226216_pose5_20251122_194335.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226216\\226216_pose6_20251122_194335.jpg"
+    ],
+    "num_poses": 6,
+    "registered_at": "2025-11-22T19:43:35.826027",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T19:43:36.208101",
+    "num_poses_captured": 6,
+    "num_samples_total": 120,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\226216\\embeddings.npy"
+  },
+  "226217": {
+    "uuid": "d8d5ba8d-6737-493e-8610-521e461e7343",
+    "student_id": "226217",
+    "name": "Isaac Newton",
+    "email": "isaac.newton@physics.edu",
+    "department": "Physics",
+    "year": 4,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226217\\226217_pose1_20251122_194336.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226217\\226217_pose2_20251122_194336.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226217\\226217_pose3_20251122_194336.jpg"
+    ],
+    "num_poses": 3,
+    "registered_at": "2025-11-22T19:43:36.893790",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T19:43:37.129042",
+    "num_poses_captured": 3,
+    "num_samples_total": 60,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\226217\\embeddings.npy"
+  },
+  "226218": {
+    "uuid": "d8e39346-0b03-409f-9414-f910df8cd99f",
+    "student_id": "226218",
+    "name": "Lionel Messi",
+    "email": "lionel.messi@sports.edu",
+    "department": "Sports Science",
+    "year": 2,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226218\\226218_pose1_20251122_194337.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226218\\226218_pose2_20251122_194337.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226218\\226218_pose3_20251122_194337.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226218\\226218_pose4_20251122_194337.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226218\\226218_pose5_20251122_194338.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T19:43:38.014035",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T19:43:39.257489",
+    "num_poses_captured": 4,
+    "num_samples_total": 80,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\226218\\embeddings.npy"
+  },
+  "226219": {
+    "uuid": "45121cbd-82d9-4f15-b0f6-56cc02e28d08",
+    "student_id": "226219",
+    "name": "Mahmoud Darwish",
+    "email": "mahmoud.darwish@literature.edu",
+    "department": "Literature",
+    "year": 3,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226219\\226219_pose1_20251122_194339.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226219\\226219_pose2_20251122_194339.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226219\\226219_pose3_20251122_194339.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226219\\226219_pose4_20251122_194339.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\226219\\226219_pose5_20251122_194339.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-22T19:43:39.142045",
+    "processing_status": "completed",
+    "processed_at": "2025-11-22T19:43:39.487766",
+    "num_poses_captured": 4,
+    "num_samples_total": 80,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed_faces\\226219\\embeddings.npy"
+  }
+}
