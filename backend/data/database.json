@@ -18,26 +18,6 @@
     "processing_status": "failed",
     "processing_error": "No face detected"
   },
-  "234753": {
-    "uuid": "9f762ca8-3510-4a03-b142-6c46c99b15a1",
-    "student_id": "234753",
-    "name": "Alan Turing",
-    "email": "alan.turing@cs.edu",
-    "department": "Computer Science",
-    "year": 3,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\234753\\234753_pose1_20251122_220552.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\234753\\234753_pose2_20251122_220552.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\234753\\234753_pose3_20251122_220552.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\234753\\234753_pose4_20251122_220552.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\234753\\234753_pose5_20251122_220552.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\234753\\234753_pose6_20251122_220552.jpg"
-    ],
-    "num_poses": 6,
-    "registered_at": "2025-11-22T22:05:52.394914",
-    "processing_status": "failed",
-    "processing_error": "No face detected"
-  },
   "234754": {
     "uuid": "7e32159b-c002-418f-9301-3f9a5539bac2",
     "student_id": "234754",

@@ -23,6 +23,7 @@ import logging
 from typing import Generator, Dict, Tuple, Optional
 import os
 from datetime import datetime
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -206,8 +207,8 @@ class FaceTracker:
                     'is_new': True
                 }
         
-        # Remove faces that disappeared for too long
-        to_remove = [face_id for face_id, face_data in self.faces.items()
+        # Remove faces that disappeared for too long (use list() to avoid RuntimeError)
+        to_remove = [face_id for face_id, face_data in list(self.faces.items())
                      if face_data.get('disappeared', 0) > self.max_disappeared]
         for face_id in to_remove:
             del self.faces[face_id]
@@ -226,7 +227,7 @@ class RealtimeRecognitionSystem:
     
     def __init__(self, 
                  camera_source: int = 0,
-                 backend_url: str = 'http://127.0.0.1:5002/api/students/recognize'):
+                 backend_url: str = 'http://127.0.0.1:5000/api/students/recognize'):
         """
         Initialize real-time recognition system.
         
@@ -242,6 +243,10 @@ class RealtimeRecognitionSystem:
         # Track unique registered IDs and count
         self.registered_ids: set[str] = set()
         self.registered_count: int = 0
+        
+        # Request throttling to prevent overwhelming backend
+        self.pending_recognitions = {}  # {face_id: timestamp}
+        self.recognition_cooldown = 2.0  # seconds between recognition requests per face
         
         # Open camera
         self.camera = cv2.VideoCapture(camera_source, cv2.CAP_DSHOW)
@@ -267,12 +272,21 @@ class RealtimeRecognitionSystem:
             face_crop: Cropped face image
         """
         try:
+            # Check if we're in cooldown period for this face
+            current_time = time.time()
+            last_request = self.pending_recognitions.get(face_id, 0)
+            if current_time - last_request < self.recognition_cooldown:
+                return  # Skip this request to avoid overwhelming backend
+            
+            # Mark request time
+            self.pending_recognitions[face_id] = current_time
+            
             # Encode image as JPEG
             _, buffer = cv2.imencode('.jpg', face_crop, [cv2.IMWRITE_JPEG_QUALITY, 85])
             
             # Send to backend
             files = {'image': ('face.jpg', buffer.tobytes(), 'image/jpeg')}
-            response = requests.post(self.backend_url, files=files, timeout=10)
+            response = requests.post(self.backend_url, files=files, timeout=30)
             response.raise_for_status()
             
             data = response.json()
