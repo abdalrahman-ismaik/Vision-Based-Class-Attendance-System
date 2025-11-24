@@ -7,6 +7,7 @@ library;
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:hadir_mobile_full/shared/domain/entities/student.dart';
+import 'backend_config_service.dart';
 
 /// Result of backend registration attempt
 class BackendRegistrationResult {
@@ -47,28 +48,30 @@ class BackendRegistrationResult {
 class BackendRegistrationService {
   final Dio _dio;
   
-  /// Backend base URL (configure for your environment)
-  /// 
-  /// - Android Emulator: 'http://10.0.2.2:5000/api'
-  /// - iOS Simulator: 'http://localhost:5000/api'
-  /// - Physical Device: 'http://YOUR_PC_IP:5000/api' (replace with your PC's IP)
-  /// 
-  /// Current: Configured for Physical Device
-  /// PC's Wi-Fi IP: 10.215.149.56
-  static const String backendBaseUrl = 'http://10.215.149.56:5000/api';
-  
-  BackendRegistrationService({Dio? dio})
+  BackendRegistrationService({Dio? dio, String? customBaseUrl})
       : _dio = dio ??
             Dio(BaseOptions(
-              baseUrl: backendBaseUrl,
+              baseUrl: customBaseUrl ?? _getDefaultBaseUrl(),
               connectTimeout: const Duration(seconds: 30),
               receiveTimeout: const Duration(minutes: 3),
               sendTimeout: const Duration(minutes: 5),
               headers: {
                 'Accept': 'application/json',
                 'User-Agent': 'HADIR-Mobile/1.0.0',
+                'bypass-tunnel-reminder': 'true',
               },
             ));
+  
+  /// Get backend URL from config service or use default
+  static String _getDefaultBaseUrl() {
+    try {
+      // Try to get from config service if initialized
+      return BackendConfigService.instance.backendUrl;
+    } catch (e) {
+      // Fallback to default if service not initialized
+      return 'http://10.215.149.56:5000/api';
+    }
+  }
   
   /// Register student to backend server
   /// 

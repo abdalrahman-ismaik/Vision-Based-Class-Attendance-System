@@ -54,6 +54,9 @@ dependencies:
   http: ^1.1.0
   dio: ^5.3.2
   
+  # Preferences
+  shared_preferences: ^2.2.2
+  
   # Utils
   uuid: ^4.1.0
   json_annotation: ^4.8.1

@@ -3,7 +3,7 @@ Flask Backend API for Vision-Based Class Attendance System
 Provides endpoints for student registration, face recognition, and attendance tracking.
 """
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, redirect
 from flask_restx import Api, Resource, fields, reqparse
 from flask_cors import CORS
 from werkzeug.datastructures import FileStorage
@@ -1308,6 +1308,23 @@ def internal_error(error):
     """Handle 500 errors."""
     logger.error(f"Internal server error: {error}")
     return jsonify({'error': 'Internal server error'}), 500
+
+
+# ==================== Root Routes for Easy Verification ====================
+
+@app.route('/')
+def index():
+    """Root endpoint to verify server is running."""
+    return {
+        'message': 'Vision-Based Attendance Backend is Running!',
+        'docs_url': '/api/docs',
+        'health_url': '/api/health/status'
+    }, 200
+
+@app.route('/api')
+def api_root():
+    """Redirect /api to Swagger UI."""
+    return redirect('/api/docs')
 
 
 # ==================== Main ====================
