@@ -1,0 +1,17 @@
+{
+  "CS101": {
+    "uuid": "cdce350e-547f-43bc-a11f-77762f127eb9",
+    "class_id": "CS101",
+    "class_name": "Introduction to Computer Science",
+    "instructor": "Dr. Smith",
+    "semester": "Fall 2025",
+    "schedule": "MWF 10:00-11:00",
+    "student_ids": [
+      "100064685",
+      "100061486",
+      "100098104"
+    ],
+    "created_at": "2025-11-25T21:57:12.484664",
+    "updated_at": "2025-11-25T21:59:31.598667"
+  }
+}

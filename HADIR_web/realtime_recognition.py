@@ -227,16 +227,19 @@ class RealtimeRecognitionSystem:
     
     def __init__(self, 
                  camera_source: int = 0,
-                 backend_url: str = 'http://127.0.0.1:5000/api/students/recognize'):
+                 backend_url: str = 'http://127.0.0.1:5000/api/attendance/class',
+                 class_id: str = 'DEFAULT_CLASS'):
         """
         Initialize real-time recognition system.
         
         Args:
             camera_source: Camera index or video file path
             backend_url: Backend recognition API endpoint
+            class_id: Class ID for attendance
         """
         # Allow overriding via environment variable if provided
         self.backend_url = os.environ.get('BACKEND_RECOGNITION_URL', backend_url)
+        self.class_id = class_id
         self.detector = FaceDetector()
         # Increased max_disappeared to 30 to prevent ID switching on temporary detection loss
         self.tracker = FaceTracker(iou_threshold=0.3, max_disappeared=30)
@@ -298,7 +301,9 @@ class RealtimeRecognitionSystem:
             
             # Send to backend
             files = {'image': ('face.jpg', buffer.tobytes(), 'image/jpeg')}
-            response = requests.post(self.backend_url, files=files, timeout=30)
+            data = {'class_id': self.class_id}
+            
+            response = requests.post(self.backend_url, files=files, data=data, timeout=30)
             
             # Handle 404 gracefully (No face detected or classifier not trained)
             if response.status_code == 404:

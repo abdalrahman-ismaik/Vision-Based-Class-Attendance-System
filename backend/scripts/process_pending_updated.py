@@ -17,13 +17,15 @@ FACENET_DIR = os.path.join(PROJECT_ROOT, 'FaceNet')
 # Add to path
 sys.path.insert(0, SCRIPT_DIR)
 sys.path.insert(0, FACENET_DIR)
+sys.path.insert(0, os.path.join(PROJECT_ROOT, 'services'))
 
 from face_processing_pipeline import FaceProcessingPipeline
 
 # Paths
-DATABASE_FILE = os.path.join(SCRIPT_DIR, 'database.json')
-PROCESSED_FACES_DIR = os.path.join(SCRIPT_DIR, 'processed_faces')
-CHECKPOINT_PATH = os.path.join(FACENET_DIR, 'mobilefacenet_arcface', 'best_model_epoch43_acc100.00.pth')
+STORAGE_DIR = os.path.join(PROJECT_ROOT, 'storage')
+DATABASE_FILE = os.path.join(STORAGE_DIR, 'data', 'database.json')
+PROCESSED_FACES_DIR = os.path.join(STORAGE_DIR, 'processed')
+CHECKPOINT_PATH = os.path.join(STORAGE_DIR, 'models', 'mobilefacenet.pth')
 
 def load_database():
     """Load database"""

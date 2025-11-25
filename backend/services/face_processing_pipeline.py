@@ -8,7 +8,7 @@ import sys
 import cv2
 import torch
 import numpy as np
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageOps
 import pickle
 from datetime import datetime
 from sklearn.svm import SVC
@@ -33,14 +33,14 @@ logger = logging.getLogger(__name__)
 # ============= CONSTANTS =============
 FACENET_MEAN = [0.31928780674934387, 0.2873991131782532, 0.25779902935028076]
 FACENET_STD = [0.19799138605594635, 0.20757903158664703, 0.21088403463363647]
-# Path from backend/services/ to FaceNet/mobilefacenet_arcface/
-DEFAULT_CHECKPOINT = '../../FaceNet/mobilefacenet_arcface/best_model_epoch43_acc100.00.pth'
+# Path to FaceNet model
+DEFAULT_CHECKPOINT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'storage', 'models', 'mobilefacenet.pth')
 
 
 class FaceDetector:
     """Face detector using RetinaFace"""
     
-    def __init__(self, threshold=0.9):
+    def __init__(self, threshold=0.8):
         """Initialize face detector"""
         try:
             # Try importing from FaceNet utils
@@ -212,11 +212,17 @@ class EmbeddingGenerator:
         self.device = device if torch.cuda.is_available() else 'cpu'
         
         if checkpoint_path is None:
-            checkpoint_path = os.path.join(
-                os.path.dirname(__file__),
-                DEFAULT_CHECKPOINT
-            )
+            checkpoint_path = DEFAULT_CHECKPOINT
         
+        if not os.path.exists(checkpoint_path):
+            # Fallback to original location if not found in storage
+            original_path = os.path.join(os.path.dirname(__file__), '..', '..', 'FaceNet', 'mobilefacenet_arcface', 'best_model_epoch43_acc100.00.pth')
+            if os.path.exists(original_path):
+                checkpoint_path = original_path
+                logger.warning(f"Model not found in storage, using fallback: {checkpoint_path}")
+            else:
+                logger.error(f"Model not found at {checkpoint_path} or {original_path}")
+
         self.model = self._load_model(checkpoint_path)
         self.transform = self._get_transform()
         logger.info(f"Embedding generator initialized on {self.device}")
@@ -541,10 +547,29 @@ class FaceProcessingPipeline:
         logger.info(f"Processing image for student {student_id}")
         
         # Load image
-        image = Image.open(image_path).convert('RGB')
+        image = Image.open(image_path)
+        
+        # Fix orientation based on EXIF
+        try:
+            image = ImageOps.exif_transpose(image)
+        except Exception as e:
+            logger.warning(f"Could not apply EXIF transpose: {e}")
+            
+        image = image.convert('RGB')
         
         # Detect faces
         bboxes = self.face_detector.detect_faces(image)
+        
+        # If no faces detected, try rotating
+        if len(bboxes) == 0:
+            logger.info(f"No face detected in initial orientation, trying rotations...")
+            for angle in [90, 180, 270]:
+                rotated_image = image.rotate(-angle, expand=True)
+                bboxes = self.face_detector.detect_faces(rotated_image)
+                if len(bboxes) > 0:
+                    logger.info(f"Face detected after rotating {angle} degrees")
+                    image = rotated_image
+                    break
         
         if len(bboxes) == 0:
             logger.warning(f"No face detected in {image_path}")
@@ -637,13 +662,32 @@ class FaceProcessingPipeline:
             try:
                 logger.info(f"Step 1/3: Loading and detecting face in image {idx}/{len(image_paths)}")
                 # Load image
-                image = Image.open(image_path).convert('RGB')
+                image = Image.open(image_path)
+                
+                # Fix orientation based on EXIF
+                try:
+                    image = ImageOps.exif_transpose(image)
+                except Exception as e:
+                    logger.warning(f"Could not apply EXIF transpose: {e}")
+                
+                image = image.convert('RGB')
                 
                 # Detect faces
                 bboxes = self.face_detector.detect_faces(image)
                 
+                # If no faces detected, try rotating
                 if len(bboxes) == 0:
-                    logger.warning(f"No face detected in image {idx} for {student_id}")
+                    logger.info(f"No face detected in initial orientation for image {idx}, trying rotations...")
+                    for angle in [90, 180, 270]:
+                        rotated_image = image.rotate(-angle, expand=True) # Rotate clockwise
+                        bboxes = self.face_detector.detect_faces(rotated_image)
+                        if len(bboxes) > 0:
+                            logger.info(f"Face detected after rotating {angle} degrees")
+                            image = rotated_image
+                            break
+                
+                if len(bboxes) == 0:
+                    logger.warning(f"No face detected in image {idx} for {student_id} (tried all orientations)")
                     continue
                 
                 # Take first/largest face
@@ -796,10 +840,27 @@ class FaceProcessingPipeline:
             raise ValueError("Classifier not trained yet!")
         
         # Load image
-        image = Image.open(image_path).convert('RGB')
+        image = Image.open(image_path)
+        
+        # Fix orientation based on EXIF
+        try:
+            image = ImageOps.exif_transpose(image)
+        except Exception as e:
+            logger.warning(f"Could not apply EXIF transpose: {e}")
+            
+        image = image.convert('RGB')
         
         # Detect faces
         bboxes = self.face_detector.detect_faces(image)
+        
+        # If no faces detected, try rotating
+        if len(bboxes) == 0:
+            for angle in [90, 180, 270]:
+                rotated_image = image.rotate(-angle, expand=True)
+                bboxes = self.face_detector.detect_faces(rotated_image)
+                if len(bboxes) > 0:
+                    image = rotated_image
+                    break
         
         if len(bboxes) == 0:
             return {'error': 'No face detected'}

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HADIR - Live Attendance Monitoring</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
@@ -22,128 +23,107 @@
                 </div>
                 <div class="stat-badge">
                     <span class="stat-label">Camera:</span>
-                    <span id="camera-status" class="status-indicator active">●</span>
-                    <span>Active</span>
+                    <span id="camera-status" class="status-indicator">●</span>
+                    <span id="camera-text">Inactive</span>
                 </div>
             </div>
         </header>
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Left Column: Video Feed -->
-            <div class="video-section">
+            
+            <!-- Setup Section -->
+            <div class="setup-section" id="setup-section">
+                <div class="setup-card">
+                    <div class="setup-header">
+                        <div class="setup-icon-wrapper">
+                            <span class="setup-icon">🏫</span>
+                        </div>
+                        <h2 class="setup-title">Start Class Session</h2>
+                        <p class="setup-description">Select a class to begin real-time attendance monitoring</p>
+                    </div>
+                    
+                    <div class="setup-body">
+                        <div class="form-group-modern">
+                            <label for="class-select" class="form-label-modern">Select Class</label>
+                            <div class="select-wrapper-modern">
+                                <select id="class-select" class="form-select-modern">
+                                    <option value="">Loading classes...</option>
+                                </select>
+                                <div class="select-icon">
+                                    <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                                        <path d="M1 1L6 6L11 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="start-class-btn" class="btn-start-modern">
+                            <span class="btn-start-icon">▶</span>
+                            <span class="btn-start-text">Start Session</span>
+                            <div class="btn-start-glow"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Feed Section (Initially Hidden) -->
+            <div class="video-section hidden" id="video-section">
                 <div class="card">
                     <div class="card-header">
-                        <h2>📹 Live Camera Feed</h2>
-                        <div class="controls">
+                        <h2>📹 Live Camera Feed <span style="font-weight: 400; color: var(--gray-500); margin-left: 0.5rem;">—</span> <span id="current-class-display" style="color: var(--primary); margin-left: 0.5rem;"></span></h2>
+                        <div class="controls" style="display: flex; gap: 0.5rem;">
                             <button id="fullscreen-btn" class="btn btn-secondary">⛶ Fullscreen</button>
+                            <button id="stop-class-btn" class="btn btn-danger">Stop Class</button>
                         </div>
                     </div>
                     <div class="video-container" id="video-container">
-                        <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Live video feed">
+                        <img id="video-feed" src="" alt="Live video feed">
                         <div class="video-overlay">
                             <div class="overlay-info">
                                 <span id="fps-counter">FPS: --</span>
+                                <span style="margin: 0 0.5rem;">|</span>
                                 <span id="faces-counter">Faces: 0</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <div class="legend">
-                            <div class="legend-item">
-                                <span class="legend-box green"></span>
-                                <span>Registered Student</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-box red"></span>
-                                <span>Unknown Face</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Column: Statistics & Info -->
-            <div class="info-section">
-                <!-- Statistics Cards -->
+            <!-- Right Column: Stats & Logs (Initially Hidden) -->
+            <div class="stats-section hidden" id="stats-section">
+                <!-- Stats Cards -->
                 <div class="stats-grid">
-                    <div class="stat-card stat-primary">
-                        <div class="stat-icon">👤</div>
-                        <div class="stat-content">
-                            <h3>Total Detected</h3>
-                            <div class="stat-value" id="total-detected">0</div>
-                        </div>
+                    <div class="stat-card">
+                        <h3>Total Detected</h3>
+                        <div class="stat-value" id="total-detected">0</div>
                     </div>
-                    
-                    <div class="stat-card stat-success">
-                        <div class="stat-icon">✓</div>
-                        <div class="stat-content">
-                            <h3>Registered</h3>
-                            <div class="stat-value" id="registered-count">0</div>
-                        </div>
+                    <div class="stat-card success">
+                        <h3>Registered</h3>
+                        <div class="stat-value" id="registered-count">0</div>
                     </div>
-                    
-                    <div class="stat-card stat-warning">
-                        <div class="stat-icon">?</div>
-                        <div class="stat-content">
-                            <h3>Unknown</h3>
-                            <div class="stat-value" id="unknown-count">0</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card stat-info">
-                        <div class="stat-icon">🕐</div>
-                        <div class="stat-content">
-                            <h3>Last Update</h3>
-                            <div class="stat-value small" id="last-update">--:--</div>
-                        </div>
+                    <div class="stat-card warning">
+                        <h3>Unknown</h3>
+                        <div class="stat-value" id="unknown-count">0</div>
                     </div>
                 </div>
 
-                <!-- Recent Detections -->
-                <div class="card">
-                    <div class="card-header">
+                <!-- Recent Detections List -->
+                <div class="card detections-list">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <h2>📋 Recent Detections</h2>
-                        <button id="clear-btn" class="btn btn-sm">Clear</button>
+                        <button id="clear-btn" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">Clear</button>
                     </div>
-                    <div class="detections-list" id="detections-list">
-                        <div class="empty-state">
-                            <p>No detections yet</p>
-                            <p class="hint">Faces will appear here when detected</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- System Info -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2>ℹ️ System Information</h2>
-                    </div>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <span class="info-label">Backend URL:</span>
-                            <span class="info-value" id="backend-url">{{ backend_url }}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Detection Model:</span>
-                            <span class="info-value">YuNet (OpenCV)</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Recognition Model:</span>
-                            <span class="info-value">MobileFaceNet + ArcFace</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Resolution:</span>
-                            <span class="info-value">640x480</span>
+                    <div class="detections-list-content" id="detections-log">
+                        <!-- Detections will be added here -->
+                        <div class="empty-state" style="text-align: center; padding: 2rem; color: var(--gray-500);">
+                            No detections yet
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Toast Notification -->
-    <div id="toast" class="toast"></div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

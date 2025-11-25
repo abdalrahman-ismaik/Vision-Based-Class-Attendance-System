@@ -75,6 +75,7 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
   bool _isCameraReady = false;
   String? _currentInstruction;
   bool _isFrontCamera = true;
+  int _sensorOrientation = 0; // Cache sensor orientation
   int _captureProgress = 0; // 0-15 for capturing 15 frames
   bool _allPosesComplete = false; // Track when all 5 poses are captured
   bool _isProcessingFrames = false; // Track when frame selection is processing
@@ -152,6 +153,7 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
       );
       
       _isFrontCamera = camera.lensDirection == CameraLensDirection.front;
+      _sensorOrientation = camera.sensorOrientation;
       
       // Cache sensor orientation for image conversion
       
@@ -263,10 +265,17 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
           var rgbImage = _convertYUV420ToImage(cameraImage);
 
           // Rotate image to match portrait orientation
+          // Use dynamic sensor orientation from camera controller
           // Android camera streams are landscape (sensor orientation)
-          // We need to rotate to get portrait. 
-          // For front camera (270 deg sensor), -90 (270) usually corrects it.
-          rgbImage = img.copyRotate(rgbImage, angle: -90);
+          // FIX: Add 180 degrees if the image is upside down (common on some devices)
+          int rotationAngle = _sensorOrientation;
+          if (Platform.isAndroid && _isFrontCamera) {
+             // If sensor is 270, we might need 90 (270+180=450%360=90)
+             rotationAngle = (_sensorOrientation + 180) % 360;
+          }
+          
+          debugPrint('🔄 Rotating image by $rotationAngle degrees (Sensor: $_sensorOrientation + 180 fix)');
+          rgbImage = img.copyRotate(rgbImage, angle: rotationAngle);
           
           // Save to temporary file
           final directory = await getTemporaryDirectory();

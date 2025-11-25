@@ -41,11 +41,11 @@ from pathlib import Path
 
 # Base paths (kept for backward compatibility)
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / 'data'
 STORAGE_DIR = BASE_DIR / 'storage'
+DATA_DIR = STORAGE_DIR / 'data'
 UPLOADS_DIR = STORAGE_DIR / 'uploads'
-PROCESSED_DIR = STORAGE_DIR / 'processed_faces'
-CLASSIFIERS_DIR = STORAGE_DIR / 'classifiers'
+PROCESSED_DIR = STORAGE_DIR / 'processed'
+CLASSIFIERS_DIR = STORAGE_DIR / 'models'
 
 # Database files
 DATABASE_FILE = DATA_DIR / 'database.json'

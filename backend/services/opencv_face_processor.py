@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # Constants
 FACENET_MEAN = [0.31928780674934387, 0.2873991131782532, 0.25779902935028076]
 FACENET_STD = [0.19799138605594635, 0.20757903158664703, 0.21088403463363647]
-DEFAULT_CHECKPOINT = os.path.join(FACENET_DIR, 'mobilefacenet_arcface', 'best_model_epoch43_acc100.00.pth')
+DEFAULT_CHECKPOINT = os.path.join(PROJECT_ROOT, 'backend', 'storage', 'models', 'mobilefacenet.pth')
 
 
 class OpenCVFaceDetector:

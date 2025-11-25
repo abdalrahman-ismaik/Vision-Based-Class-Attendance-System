@@ -82,3 +82,5 @@ processed_faces/*
 # Logs
 *.log
 logs/
+
+HADIR_web/debug_faces
