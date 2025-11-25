@@ -69,7 +69,7 @@ class BackendRegistrationService {
       return BackendConfigService.instance.backendUrl;
     } catch (e) {
       // Fallback to default if service not initialized
-      return 'http://10.215.149.56:5000/api';
+      return BackendConfigService.defaultAndroidEmulator;
     }
   }
   
@@ -89,6 +89,16 @@ class BackendRegistrationService {
     required Student student,
     required List<File> imageFiles,
   }) async {
+    // Update base URL from config service to ensure we use the latest one
+    try {
+      final currentUrl = BackendConfigService.instance.backendUrl;
+      if (_dio.options.baseUrl != currentUrl) {
+        _dio.options.baseUrl = currentUrl;
+      }
+    } catch (_) {
+      // Ignore if config service not initialized
+    }
+
     try {
       // Validate input count
       if (imageFiles.length != 5) {
@@ -159,7 +169,18 @@ class BackendRegistrationService {
     } on DioException catch (e) {
       // Handle specific Dio errors
       if (e.response?.statusCode == 409) {
-        // Student already exists - could be considered success
+        // Student already exists - try to delete and re-register
+        try {
+          final deleted = await deleteStudent(student.studentId);
+          if (deleted) {
+            // Retry registration recursively
+            return registerStudent(student: student, imageFiles: imageFiles);
+          }
+        } catch (_) {
+          // Ignore delete error and fall through to return success (existing behavior)
+        }
+
+        // Fallback: Student already exists - could be considered success
         return BackendRegistrationResult.success(
           backendStudentId: student.studentId,
           message: 'Student already registered in backend',
@@ -196,6 +217,16 @@ class BackendRegistrationService {
   
   /// Check if backend is reachable (health check)
   Future<bool> isBackendAvailable() async {
+    // Update base URL from config service
+    try {
+      final currentUrl = BackendConfigService.instance.backendUrl;
+      if (_dio.options.baseUrl != currentUrl) {
+        _dio.options.baseUrl = currentUrl;
+      }
+    } catch (_) {
+      // Ignore if config service not initialized
+    }
+
     try {
       final response = await _dio.get(
         '/health/status',  // Correct endpoint path
@@ -206,6 +237,37 @@ class BackendRegistrationService {
       );
       return response.statusCode == 200;
     } catch (e) {
+      return false;
+    }
+  }
+  
+  /// Delete student from backend
+  Future<bool> deleteStudent(String studentId) async {
+    // Update base URL from config service
+    try {
+      final currentUrl = BackendConfigService.instance.backendUrl;
+      if (_dio.options.baseUrl != currentUrl) {
+        _dio.options.baseUrl = currentUrl;
+      }
+    } catch (_) {
+      // Ignore if config service not initialized
+    }
+
+    try {
+      final response = await _dio.delete(
+        '/students/$studentId',
+        options: Options(
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      // If student not found (404), consider it deleted
+      if (e is DioException && e.response?.statusCode == 404) {
+        return true;
+      }
       return false;
     }
   }

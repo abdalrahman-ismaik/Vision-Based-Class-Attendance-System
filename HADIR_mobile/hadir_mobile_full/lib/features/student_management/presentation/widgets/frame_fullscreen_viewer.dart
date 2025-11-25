@@ -84,7 +84,10 @@ class _FrameFullscreenViewerState extends State<FrameFullscreenViewer> {
           minScale: 0.5,
           maxScale: 4.0,
           child: file.existsSync()
-              ? Image.file(file)
+              ? RotatedBox(
+                  quarterTurns: 2, // Fix 180 degree rotation issue
+                  child: Image.file(file),
+                )
               : Container(
                   color: Colors.grey.shade900,
                   child: const Center(

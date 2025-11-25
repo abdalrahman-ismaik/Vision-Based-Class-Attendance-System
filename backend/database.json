@@ -219,5 +219,24 @@
     "num_poses_captured": 4,
     "num_samples_total": 80,
     "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\FPSHAHRU558\\embeddings.npy"
+  },
+  "100064692": {
+    "uuid": "3ef20824-0baa-4f9d-9fa1-c0e90ac8e36a",
+    "student_id": "100064692",
+    "name": "Abd Alrahman Ismaik",
+    "email": "100064692@ku.ac.ae",
+    "department": "Computer Science",
+    "year": 0,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100064692\\100064692_pose1_20251125_131403.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100064692\\100064692_pose2_20251125_131403.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100064692\\100064692_pose3_20251125_131403.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100064692\\100064692_pose4_20251125_131403.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100064692\\100064692_pose5_20251125_131403.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-25T13:14:03.122944",
+    "processing_status": "failed",
+    "processing_error": "No face detected"
   }
 }

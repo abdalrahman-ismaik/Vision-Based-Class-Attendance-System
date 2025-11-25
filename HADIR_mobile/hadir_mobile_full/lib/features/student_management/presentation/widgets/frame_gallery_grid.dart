@@ -133,19 +133,22 @@ class FrameGalleryGrid extends StatelessWidget {
       );
     }
 
-    return Image.file(
-      file,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: Colors.grey.shade200,
-          child: Icon(
-            Icons.error_outline,
-            color: Colors.grey.shade400,
-            size: 32,
-          ),
-        );
-      },
+    return RotatedBox(
+      quarterTurns: 2, // Fix 180 degree rotation issue
+      child: Image.file(
+        file,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey.shade200,
+            child: Icon(
+              Icons.error_outline,
+              color: Colors.grey.shade400,
+              size: 32,
+            ),
+          );
+        },
+      ),
     );
   }
 

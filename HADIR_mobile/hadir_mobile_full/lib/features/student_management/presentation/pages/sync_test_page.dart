@@ -294,14 +294,13 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
       final database = ref.read(databaseProvider);
       final db = await database.database;
 
-      // Get first image path
+      // Get all image paths
       final frames = await db.query(
         'selected_frames',
         columns: ['image_file_path'],
         where: 'session_id = ?',
         whereArgs: [studentData['registration_session_id']],
         orderBy: 'timestamp_ms ASC',
-        limit: 1,
       );
 
       if (frames.isEmpty) {
@@ -317,20 +316,24 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
         return;
       }
 
-      final imagePath = frames.first['image_file_path'] as String;
-      final imageFile = File(imagePath);
+      final imageFiles = frames
+          .map((f) => File(f['image_file_path'] as String))
+          .toList();
 
-      if (!await imageFile.exists()) {
-        if (mounted) Navigator.of(context).pop();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Image file not found: $imagePath'),
-              backgroundColor: Colors.red,
-            ),
-          );
+      // Validate all files exist
+      for (var file in imageFiles) {
+        if (!await file.exists()) {
+          if (mounted) Navigator.of(context).pop();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('❌ Image file not found: ${file.path}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
         }
-        return;
       }
 
       // Create Student entity (simplified - only required fields)
@@ -351,7 +354,7 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
       final syncService = ref.read(syncServiceProvider);
       final result = await syncService.syncStudent(
         student: student,
-        imageFile: imageFile,
+        imageFiles: imageFiles,
       );
 
       // Close loading dialog

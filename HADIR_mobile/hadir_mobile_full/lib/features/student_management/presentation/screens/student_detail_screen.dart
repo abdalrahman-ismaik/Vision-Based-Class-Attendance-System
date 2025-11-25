@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/student_detail_provider.dart';
+import '../providers/student_list_provider.dart';
 import '../widgets/frame_gallery_grid.dart';
 import '../widgets/student_sync_button.dart';
 import '../../../../shared/domain/entities/student.dart';
@@ -60,6 +61,11 @@ class StudentDetailScreen extends ConsumerWidget {
             orElse: () => const SizedBox.shrink(),
           ),
           const SizedBox(width: 8),
+          // Delete button
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.white),
+            onPressed: () => _confirmDelete(context, ref, studentId),
+          ),
         ],
       ),
       body: studentDetail.when(
@@ -410,5 +416,37 @@ class StudentDetailScreen extends ConsumerWidget {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, String studentId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Student'),
+        content: const Text('Are you sure you want to delete this student? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(studentListProvider.notifier).deleteStudent(studentId);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Student deleted successfully')),
+        );
+        Navigator.pop(context);
+      }
+    }
   }
 }

@@ -40,4 +40,10 @@ abstract class StudentManagementRepository {
 
   /// Get count of students by status
   Future<Map<String, int>> getStudentCountByStatus();
+
+  /// Delete a single student and their associated data
+  Future<void> deleteStudent(String studentId);
+
+  /// Delete multiple students and their associated data
+  Future<void> deleteStudents(List<String> studentIds);
 }

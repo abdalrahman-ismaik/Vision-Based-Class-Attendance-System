@@ -79,7 +79,6 @@ class StudentSyncButton extends ConsumerWidget {
       where: 'session_id = ?',
       whereArgs: [student.registrationSessionId],
       orderBy: 'timestamp_ms ASC',
-      limit: 1,
     );
 
     if (frames.isEmpty) {
@@ -94,20 +93,23 @@ class StudentSyncButton extends ConsumerWidget {
       return;
     }
 
-    final imagePath = frames.first['image_file_path'] as String;
+    final imageFiles = frames
+        .map((f) => File(f['image_file_path'] as String))
+        .toList();
 
-    // Check if file exists
-    final imageFile = File(imagePath);
-    if (!await imageFile.exists()) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Image file not found: $imagePath'),
-            backgroundColor: AppColors.warningRed,
-          ),
-        );
+    // Check if files exist
+    for (var file in imageFiles) {
+      if (!await file.exists()) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Image file not found: ${file.path}'),
+              backgroundColor: AppColors.warningRed,
+            ),
+          );
+        }
+        return;
       }
-      return;
     }
 
     // Show loading dialog
@@ -138,7 +140,7 @@ class StudentSyncButton extends ConsumerWidget {
       final syncService = ref.read(syncServiceProvider);
       final result = await syncService.syncStudent(
         student: student,
-        imageFile: imageFile,
+        imageFiles: imageFiles,
       );
 
       // Close loading dialog

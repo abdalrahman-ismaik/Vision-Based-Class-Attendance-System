@@ -4,6 +4,7 @@ import 'package:hadir_mobile_full/core/config/sync_config.dart';
 import 'package:hadir_mobile_full/core/models/sync_models.dart';
 import 'package:hadir_mobile_full/shared/data/data_sources/local_database_data_source.dart';
 import 'package:hadir_mobile_full/shared/domain/entities/student.dart';
+import 'package:hadir_mobile_full/core/services/backend_config_service.dart';
 
 /// Service for synchronizing student data from mobile to backend
 /// 
@@ -30,7 +31,7 @@ class SyncService {
   /// Sync a single student to the backend
   /// 
   /// This method:
-  /// 1. Validates student data and image file
+  /// 1. Validates student data and image files
   /// 2. Updates local database (status = 'syncing')
   /// 3. Builds multipart form data
   /// 4. POSTs to /api/students/ endpoint
@@ -39,23 +40,33 @@ class SyncService {
   /// Returns [SyncResult] with success/failure status
   Future<SyncResult> syncStudent({
     required Student student,
-    required File imageFile,
+    required List<File> imageFiles,
   }) async {
     final startTime = DateTime.now();
     
+    // Update base URL from config service
+    try {
+      final currentUrl = BackendConfigService.instance.backendUrl;
+      if (_dio.options.baseUrl != currentUrl) {
+        _dio.options.baseUrl = currentUrl;
+      }
+    } catch (_) {
+      // Ignore if config service not initialized
+    }
+
     try {
       _log('[SYNC] =====================================');
       _log('[SYNC] Starting sync for student: ${student.studentId}');
       _log('[SYNC] Student ID: ${student.id}');
       _log('[SYNC] Student Name: ${student.fullName}');
-      _log('[SYNC] Backend URL: ${SyncConfig.backendBaseUrl}');
+      _log('[SYNC] Backend URL: ${_dio.options.baseUrl}');
       _log('[SYNC] Connection timeout: ${SyncConfig.connectionTimeout}');
       _log('[SYNC] Receive timeout: ${SyncConfig.receiveTimeout}');
       _log('[SYNC] =====================================');
       
       // Step 1: Validate inputs
       _log('[SYNC] Step 1: Validating inputs...');
-      await _validateSyncInputs(student, imageFile);
+      await _validateSyncInputs(student, imageFiles);
       _log('[SYNC] ✅ Step 1 complete: Validation passed');
       
       // Step 2: Update local database - syncing
@@ -70,13 +81,33 @@ class SyncService {
       
       // Step 3: Build request
       _log('[SYNC] Step 3: Building request FormData...');
-      final formData = await _buildSyncRequest(student, imageFile);
+      final formData = await _buildSyncRequest(student, imageFiles);
       _log('[SYNC] ✅ Step 3 complete: FormData ready');
       
       // Step 4: Send to backend
       _log('[SYNC] Step 4: Sending POST request to backend...');
-      _log('[SYNC] 📡 Attempting connection to: ${SyncConfig.backendBaseUrl}/students/');
-      final response = await _sendSyncRequest(formData);
+      _log('[SYNC] 📡 Attempting connection to: ${_dio.options.baseUrl}/students/');
+      
+      Response response;
+      try {
+        response = await _sendSyncRequest(formData);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 409) {
+          _log('[SYNC] ⚠️ Student exists (409). Attempting overwrite...');
+          final deleted = await _deleteStudentFromBackend(student.studentId);
+          if (deleted) {
+             _log('[SYNC] 🔄 Retrying upload after delete...');
+             // Re-build form data (streams might be consumed)
+             final newFormData = await _buildSyncRequest(student, imageFiles);
+             response = await _sendSyncRequest(newFormData);
+          } else {
+            rethrow;
+          }
+        } else {
+          rethrow;
+        }
+      }
+
       _log('[SYNC] ✅ Step 4 complete: Received response ${response.statusCode}');
       
       // Step 5: Handle success response
@@ -163,7 +194,7 @@ class SyncService {
   // ========================================================================
 
   /// Validate sync inputs before attempting sync
-  Future<void> _validateSyncInputs(Student student, File imageFile) async {
+  Future<void> _validateSyncInputs(Student student, List<File> imageFiles) async {
     _log('[SYNC]   → Checking student ID...');
     // Check student ID is present
     if (student.studentId.isEmpty) {
@@ -175,53 +206,75 @@ class SyncService {
     }
     _log('[SYNC]   ✓ Student ID valid: ${student.studentId}');
     
-    _log('[SYNC]   → Checking image file exists...');
-    _log('[SYNC]   → Image path: ${imageFile.path}');
-    // Check image file exists
-    if (!await imageFile.exists()) {
-      _logError('[SYNC]   ❌ Image file not found at: ${imageFile.path}');
+    _log('[SYNC]   → Checking image files...');
+    if (imageFiles.isEmpty) {
+      _logError('[SYNC]   ❌ No image files provided');
       throw SyncError(
         type: SyncErrorType.file,
-        message: 'Image file not found: ${imageFile.path}',
+        message: 'No image files provided',
       );
     }
-    _log('[SYNC]   ✓ Image file exists');
-    
-    _log('[SYNC]   → Checking image file size...');
-    // Check image file size
-    final fileSize = await imageFile.length();
-    _log('[SYNC]   → Image size: ${(fileSize / 1024).toStringAsFixed(2)} KB');
-    if (!SyncConfig.isImageValid(imageFile.path, fileSize)) {
-      _logError('[SYNC]   ❌ Invalid image: size=$fileSize bytes, path=${imageFile.path}');
-      throw SyncError(
-        type: SyncErrorType.file,
-        message: 'Invalid image file (check size/format)',
-      );
+
+    for (var i = 0; i < imageFiles.length; i++) {
+      final imageFile = imageFiles[i];
+      _log('[SYNC]   → Checking image ${i + 1} exists...');
+      _log('[SYNC]   → Image path: ${imageFile.path}');
+      
+      // Check image file exists
+      if (!await imageFile.exists()) {
+        _logError('[SYNC]   ❌ Image file not found at: ${imageFile.path}');
+        throw SyncError(
+          type: SyncErrorType.file,
+          message: 'Image file not found: ${imageFile.path}',
+        );
+      }
+      
+      _log('[SYNC]   → Checking image ${i + 1} size...');
+      // Check image file size
+      final fileSize = await imageFile.length();
+      _log('[SYNC]   → Image size: ${(fileSize / 1024).toStringAsFixed(2)} KB');
+      if (!SyncConfig.isImageValid(imageFile.path, fileSize)) {
+        _logError('[SYNC]   ❌ Invalid image: size=$fileSize bytes, path=${imageFile.path}');
+        throw SyncError(
+          type: SyncErrorType.file,
+          message: 'Invalid image file (check size/format)',
+        );
+      }
     }
-    _log('[SYNC]   ✓ Image file valid');
+    _log('[SYNC]   ✓ All ${imageFiles.length} image files valid');
   }
 
   /// Build FormData for sync request
-  Future<FormData> _buildSyncRequest(Student student, File imageFile) async {
+  Future<FormData> _buildSyncRequest(Student student, List<File> imageFiles) async {
     _log('[SYNC]   → Building FormData...');
     _log('[SYNC]   → Field: student_id = ${student.studentId}');
     _log('[SYNC]   → Field: name = ${student.fullName}');
     _log('[SYNC]   → Field: email = ${student.email}');
     _log('[SYNC]   → Field: department = ${student.department}');
     _log('[SYNC]   → Field: year = ${student.enrollmentYear ?? 0}');
-    _log('[SYNC]   → Field: image = ${imageFile.path}');
+    _log('[SYNC]   → Field: images count = ${imageFiles.length}');
     
-    final formData = FormData.fromMap({
-      'student_id': student.studentId,
-      'name': student.fullName,
-      'email': student.email,
-      'department': student.department,
-      'year': student.enrollmentYear ?? 0,
-      'image': await MultipartFile.fromFile(
-        imageFile.path,
-        filename: '${student.studentId}_face.jpg',
-      ),
-    });
+    final formData = FormData();
+    
+    // Add fields
+    formData.fields.addAll([
+      MapEntry('student_id', student.studentId),
+      MapEntry('name', student.fullName),
+      MapEntry('email', student.email),
+      MapEntry('department', student.department),
+      MapEntry('year', (student.enrollmentYear ?? 0).toString()),
+    ]);
+
+    // Add images
+    for (var i = 0; i < imageFiles.length; i++) {
+      formData.files.add(MapEntry(
+        'images',
+        await MultipartFile.fromFile(
+          imageFiles[i].path,
+          filename: '${student.studentId}_pose${i + 1}.jpg',
+        ),
+      ));
+    }
     
     _log('[SYNC]   ✓ FormData built successfully');
     return formData;
@@ -320,8 +373,34 @@ class SyncService {
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
         if (statusCode == 409) {
-          errorType = SyncErrorType.client;
-          errorMessage = 'Student already exists on backend';
+          // Student already exists - try to delete and re-sync
+          _log('[SYNC] ⚠️ Student already exists on backend (409). Attempting to overwrite...');
+          
+          try {
+            final deleted = await _deleteStudentFromBackend(student.studentId);
+            if (deleted) {
+              _log('[SYNC] 🔄 Overwrite: Student deleted, retrying upload...');
+              // We can't easily recurse here because we don't have the image files in this scope
+              // But we can return a special error that triggers a retry in the UI or handle it differently
+              // Ideally, we should have handled this in the main flow, but since we are in error handler:
+              
+              // Let's try to return a "failed" result but with a specific message telling user to retry
+              // OR better: modify the main syncStudent flow to handle 409 explicitly instead of catching it here.
+              
+              // Actually, let's just mark it as failed with a "Retry to overwrite" message for now, 
+              // OR since we just deleted it, the NEXT attempt will succeed.
+              
+              // Wait, if I deleted it successfully, I should probably tell the user to try again.
+              errorType = SyncErrorType.client;
+              errorMessage = 'Existing record cleared. Please tap sync again to upload.';
+            } else {
+              errorType = SyncErrorType.client;
+              errorMessage = 'Student exists and could not be overwritten.';
+            }
+          } catch (e) {
+            errorType = SyncErrorType.client;
+            errorMessage = 'Student exists. Overwrite failed: $e';
+          }
         } else if (statusCode != null && statusCode >= 400 && statusCode < 500) {
           errorType = SyncErrorType.client;
           errorMessage = 'Invalid request: ${error.response?.data?['error'] ?? error.message}';
@@ -410,6 +489,33 @@ class SyncService {
     } catch (e) {
       _logError('[SYNC] Failed to update local database: $e');
       rethrow;
+    }
+  }
+
+  /// Delete student from backend
+  Future<bool> _deleteStudentFromBackend(String studentId) async {
+    try {
+      _log('[SYNC]   → Attempting to delete existing student $studentId from backend...');
+      final response = await _dio.delete(
+        '/students/$studentId',
+        options: Options(
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
+      
+      if (response.statusCode == 200 || response.statusCode == 404) {
+        _log('[SYNC]   ✓ Student deleted successfully (or not found)');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _logError('[SYNC]   ❌ Failed to delete student: $e');
+      // If 404, it's already deleted
+      if (e is DioException && e.response?.statusCode == 404) {
+        return true;
+      }
+      return false;
     }
   }
 

@@ -178,6 +178,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                           ],
                         ),
+                        SizedBox(height: AppSpacing.xl), // Add extra padding at bottom
                       ],
                     ),
                   ),
@@ -217,7 +218,7 @@ class _ActionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: AppRadius.circularXL,
         child: Container(
-          height: 180,
+          height: 200,
           decoration: BoxDecoration(
             gradient: gradient,
             borderRadius: AppRadius.circularXL,
@@ -240,9 +241,19 @@ class _ActionCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTextStyles.cardTitle),
+                  Text(
+                    title, 
+                    style: AppTextStyles.cardTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   SizedBox(height: AppSpacing.xs / 2),
-                  Text(description, style: AppTextStyles.cardDescription),
+                  Text(
+                    description, 
+                    style: AppTextStyles.cardDescription,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ],
@@ -270,7 +281,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 130,
+      height: 150,
       decoration: BoxDecoration(
         color: AppColors.backgroundWhite,
         borderRadius: AppRadius.circularXL,
@@ -299,7 +310,12 @@ class _StatCard extends StatelessWidget {
               ),
             ],
           ),
-          Text(title, style: AppTextStyles.statLabel),
+          Text(
+            title, 
+            style: AppTextStyles.statLabel,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );

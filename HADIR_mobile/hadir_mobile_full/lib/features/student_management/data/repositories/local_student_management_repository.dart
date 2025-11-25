@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../../domain/repositories/student_management_repository.dart';
 import '../models/student_list_item.dart';
 import '../models/student_detail.dart';
@@ -6,12 +7,15 @@ import '../models/student_sort_option.dart';
 import '../../../../shared/domain/entities/student.dart';
 import '../../../../shared/domain/entities/selected_frame.dart';
 import '../../../../shared/data/data_sources/local_database_data_source.dart';
+import '../../../../core/services/backend_registration_service.dart';
 
 /// Local database implementation of student management repository
 class LocalStudentManagementRepository implements StudentManagementRepository {
   final LocalDatabaseDataSource _dataSource;
+  final BackendRegistrationService _backendService;
 
-  LocalStudentManagementRepository(this._dataSource);
+  LocalStudentManagementRepository(this._dataSource, [BackendRegistrationService? backendService])
+      : _backendService = backendService ?? BackendRegistrationService();
 
   @override
   Future<List<StudentListItem>> getAllStudents({
@@ -246,5 +250,90 @@ class LocalStudentManagementRepository implements StudentManagementRepository {
       for (var row in results)
         row['status'] as String: row['count'] as int,
     };
+  }
+
+  @override
+  Future<void> deleteStudent(String studentId) async {
+    final db = await _dataSource.database;
+    String? matriculationNumber;
+    
+    await db.transaction((txn) async {
+      // 1. Get image paths to delete files later
+      final frames = await txn.rawQuery('''
+        SELECT sf.image_file_path 
+        FROM selected_frames sf
+        JOIN registration_sessions rs ON sf.session_id = rs.id
+        JOIN students s ON rs.id = s.registration_session_id
+        WHERE s.id = ?
+      ''', [studentId]);
+      
+      // 2. Get registration session ID and student_id
+      final student = await txn.query(
+        'students',
+        columns: ['registration_session_id', 'student_id'],
+        where: 'id = ?',
+        whereArgs: [studentId],
+      );
+      
+      if (student.isNotEmpty) {
+        final sessionId = student.first['registration_session_id'] as String?;
+        matriculationNumber = student.first['student_id'] as String?;
+        
+        // Delete student
+        await txn.delete(
+          'students',
+          where: 'id = ?',
+          whereArgs: [studentId],
+        );
+        
+        if (sessionId != null) {
+          // Delete frames
+          await txn.delete(
+            'selected_frames',
+            where: 'session_id = ?',
+            whereArgs: [sessionId],
+          );
+          
+          // Delete session
+          await txn.delete(
+            'registration_sessions',
+            where: 'id = ?',
+            whereArgs: [sessionId],
+          );
+        }
+      }
+      
+      // 3. Delete files
+      for (var frame in frames) {
+        final path = frame['image_file_path'] as String?;
+        if (path != null) {
+          final file = File(path);
+          if (await file.exists()) {
+            try {
+              await file.delete();
+            } catch (e) {
+              // Ignore file deletion errors
+            }
+          }
+        }
+      }
+    });
+    
+    // 4. Delete from backend if we found the matriculation number
+    if (matriculationNumber != null) {
+      try {
+        await _backendService.deleteStudent(matriculationNumber!);
+      } catch (e) {
+        // Log error but don't fail the local deletion
+        print('Failed to delete student from backend: $e');
+      }
+    }
+  }
+
+  @override
+  Future<void> deleteStudents(List<String> studentIds) async {
+    for (var id in studentIds) {
+      await deleteStudent(id);
+    }
   }
 }

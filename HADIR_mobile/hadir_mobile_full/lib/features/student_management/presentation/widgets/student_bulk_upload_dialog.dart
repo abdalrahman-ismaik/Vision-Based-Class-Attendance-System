@@ -64,7 +64,7 @@ class _StudentBulkUploadDialogState extends ConsumerState<StudentBulkUploadDialo
       );
 
       try {
-        // Get image path from database
+        // Get image paths from database
         final db = await database.database;
         final frames = await db.query(
           'selected_frames',
@@ -72,7 +72,6 @@ class _StudentBulkUploadDialogState extends ConsumerState<StudentBulkUploadDialo
           where: 'session_id = ?',
           whereArgs: [fullStudent.registrationSessionId],
           orderBy: 'timestamp_ms ASC',
-          limit: 1,
         );
 
         if (frames.isEmpty) {
@@ -85,13 +84,23 @@ class _StudentBulkUploadDialogState extends ConsumerState<StudentBulkUploadDialo
           continue;
         }
 
-        final imagePath = frames.first['image_file_path'] as String;
-        final imageFile = File(imagePath);
+        final imageFiles = frames
+            .map((f) => File(f['image_file_path'] as String))
+            .toList();
 
-        if (!await imageFile.exists()) {
+        // Validate files exist
+        bool allFilesExist = true;
+        for (var file in imageFiles) {
+          if (!await file.exists()) {
+            allFilesExist = false;
+            break;
+          }
+        }
+
+        if (!allFilesExist) {
           setState(() {
             _results[studentItem.id] = SyncResult.failed(
-              error: 'Image file not found',
+              error: 'One or more image files not found',
             );
             _failureCount++;
           });
@@ -101,7 +110,7 @@ class _StudentBulkUploadDialogState extends ConsumerState<StudentBulkUploadDialo
         // Perform sync
         final result = await syncService.syncStudent(
           student: fullStudent,
-          imageFile: imageFile,
+          imageFiles: imageFiles,
         );
 
         setState(() {

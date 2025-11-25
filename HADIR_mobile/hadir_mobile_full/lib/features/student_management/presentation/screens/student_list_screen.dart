@@ -85,6 +85,11 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                   tooltip: 'Select all unsent',
                 ),
                 IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.white),
+                  onPressed: _selectedStudentIds.isEmpty ? null : _deleteSelectedStudents,
+                  tooltip: 'Delete selected',
+                ),
+                IconButton(
                   icon: const Icon(Icons.cloud_upload, color: Colors.white),
                   onPressed: _selectedStudentIds.isEmpty ? null : _uploadSelectedStudents,
                   tooltip: 'Upload selected',
@@ -310,26 +315,98 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
           }
 
           final student = state.students[index];
-          return StudentListCard(
-            student: student,
-            isSelectionMode: _isSelectionMode,
-            isSelected: _selectedStudentIds.contains(student.id),
-            onTap: () {
-              if (_isSelectionMode) {
-                _toggleSelection(student.id);
-              } else {
-                context.push('/students/${student.id}');
-              }
+          return Dismissible(
+            key: Key(student.id),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              margin: const EdgeInsets.only(bottom: AppSpacing.md),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: AppRadius.circularMD,
+              ),
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            confirmDismiss: (direction) async {
+              return await showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete Student'),
+                  content: Text('Are you sure you want to delete ${student.fullName}?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
             },
-            onLongPress: () {
-              if (!_isSelectionMode) {
-                _enterSelectionMode(student.id);
-              }
+            onDismissed: (direction) {
+              ref.read(studentListProvider.notifier).deleteStudent(student.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${student.fullName} deleted')),
+              );
             },
+            child: StudentListCard(
+              student: student,
+              isSelectionMode: _isSelectionMode,
+              isSelected: _selectedStudentIds.contains(student.id),
+              onTap: () {
+                if (_isSelectionMode) {
+                  _toggleSelection(student.id);
+                } else {
+                  context.push('/students/${student.id}');
+                }
+              },
+              onLongPress: () {
+                if (!_isSelectionMode) {
+                  _enterSelectionMode(student.id);
+                }
+              },
+            ),
           );
         },
       ),
     );
+  }
+
+  Future<void> _deleteSelectedStudents() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Students'),
+        content: Text('Are you sure you want to delete ${_selectedStudentIds.length} students? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(studentListProvider.notifier).deleteStudents(_selectedStudentIds.toList());
+      _exitSelectionMode();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Students deleted successfully')),
+        );
+      }
+    }
   }
 
   void _enterSelectionMode(String studentId) {

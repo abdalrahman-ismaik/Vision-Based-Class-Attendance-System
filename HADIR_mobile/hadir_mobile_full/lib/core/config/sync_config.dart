@@ -22,7 +22,7 @@ class SyncConfig {
   /// - Production: 'https://api.hadir.edu/api'
   static const String backendBaseUrl = String.fromEnvironment(
     'BACKEND_URL',
-    defaultValue: 'http://10.215.149.56:5000/api', // Physical Device: PC's Wi-Fi IP
+    defaultValue: 'http://10.0.2.2:5000/api', // Default for Android Emulator
   );
   
   /// Backend API version

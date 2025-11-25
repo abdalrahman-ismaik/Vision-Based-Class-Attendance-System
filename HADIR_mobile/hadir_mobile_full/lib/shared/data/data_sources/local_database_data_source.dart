@@ -16,7 +16,10 @@ class LocalDatabaseDataSource {
 
   /// Get database instance, creating it if necessary
   Future<Database> get database async {
-    _database ??= await _initDatabase();
+    if (_database != null && _database!.isOpen) {
+      return _database!;
+    }
+    _database = await _initDatabase();
     return _database!;
   }
 

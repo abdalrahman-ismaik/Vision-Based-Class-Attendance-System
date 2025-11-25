@@ -59,9 +59,10 @@ class StudentListState {
 /// Provider for student list with pagination, search, and filtering
 class StudentListNotifier extends StateNotifier<StudentListState> {
   final StudentManagementRepository _repository;
+  final Ref _ref;
   static const int _pageSize = 20;
 
-  StudentListNotifier(this._repository) : super(const StudentListState());
+  StudentListNotifier(this._repository, this._ref) : super(const StudentListState());
 
   /// Load initial student list
   Future<void> loadStudents() async {
@@ -82,6 +83,9 @@ class StudentListNotifier extends StateNotifier<StudentListState> {
         hasMore: students.length >= _pageSize,
         currentPage: 0,
       );
+      
+      // Refresh stats
+      _ref.invalidate(studentStatsProvider);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -273,12 +277,44 @@ class StudentListNotifier extends StateNotifier<StudentListState> {
     state = state.copyWith(filter: const StudentFilter(), students: [], currentPage: 0);
     loadStudents();
   }
+
+  /// Delete a single student
+  Future<void> deleteStudent(String studentId) async {
+    try {
+      await _repository.deleteStudent(studentId);
+      
+      // Remove from list locally
+      final updatedStudents = state.students.where((s) => s.id != studentId).toList();
+      state = state.copyWith(students: updatedStudents);
+      
+      // Refresh stats
+      _ref.invalidate(studentStatsProvider);
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to delete student: ${e.toString()}');
+    }
+  }
+
+  /// Delete multiple students
+  Future<void> deleteStudents(List<String> studentIds) async {
+    try {
+      await _repository.deleteStudents(studentIds);
+      
+      // Remove from list locally
+      final updatedStudents = state.students.where((s) => !studentIds.contains(s.id)).toList();
+      state = state.copyWith(students: updatedStudents);
+      
+      // Refresh stats
+      _ref.invalidate(studentStatsProvider);
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to delete students: ${e.toString()}');
+    }
+  }
 }
 
 /// Provider for student list state
 final studentListProvider = StateNotifierProvider<StudentListNotifier, StudentListState>((ref) {
   final repository = ref.watch(studentManagementRepositoryProvider);
-  return StudentListNotifier(repository);
+  return StudentListNotifier(repository, ref);
 });
 
 /// Provider for student statistics

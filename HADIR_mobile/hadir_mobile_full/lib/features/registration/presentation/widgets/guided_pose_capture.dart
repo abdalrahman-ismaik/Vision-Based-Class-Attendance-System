@@ -260,7 +260,13 @@ class _GuidedPoseCaptureState extends ConsumerState<GuidedPoseCapture>
         
         try {
           // Convert YUV to RGB
-          final rgbImage = _convertYUV420ToImage(cameraImage);
+          var rgbImage = _convertYUV420ToImage(cameraImage);
+
+          // Rotate image to match portrait orientation
+          // Android camera streams are landscape (sensor orientation)
+          // We need to rotate to get portrait. 
+          // For front camera (270 deg sensor), -90 (270) usually corrects it.
+          rgbImage = img.copyRotate(rgbImage, angle: -90);
           
           // Save to temporary file
           final directory = await getTemporaryDirectory();
