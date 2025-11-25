@@ -182,6 +182,23 @@ def main():
         
     except Exception as e:
         logger.error(f"Failed to start server: {e}")
+        
+        # Add helpful hint for WSL2/Linux users
+        if "Failed to open camera" in str(e):
+            print("\n" + "!"*60)
+            print("  [ERROR] Could not open camera.")
+            if os.name != 'nt':
+                print("  [TIP] On WSL2/Linux, direct webcam access (index 0) requires USBIPD.")
+            
+            if "http" in str(args.camera):
+                print("  [TIP] For IP Cameras, ensure the URL includes the video stream endpoint.")
+                print("        Common endpoints: /video, /video?x.mjpeg, /mjpegfeed")
+                print(f"        Try: {args.camera}/video")
+            else:
+                print("  [TIP] Alternatively, use an IP Webcam app on your phone:")
+                print("        python app.py --camera http://192.168.1.x:8080/video")
+            print("!"*60 + "\n")
+
         if recognition_system:
             recognition_system.release()
         raise

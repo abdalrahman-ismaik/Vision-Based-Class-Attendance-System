@@ -253,8 +253,33 @@ class RealtimeRecognitionSystem:
         self.collecting_faces = {}  # {face_id: {'start_time': float, 'best_score': float, 'best_crop': img}}
         
         # Open camera
-        self.camera = cv2.VideoCapture(camera_source, cv2.CAP_DSHOW)
+        # Use CAP_DSHOW only on Windows and for integer camera indices (webcams)
+        if os.name == 'nt' and isinstance(camera_source, int):
+            self.camera = cv2.VideoCapture(camera_source, cv2.CAP_DSHOW)
+        else:
+            self.camera = cv2.VideoCapture(camera_source)
+
+        # If failed and it's a URL, try appending common endpoints (auto-fix for IP Webcam apps)
+        if not self.camera.isOpened() and isinstance(camera_source, str) and camera_source.startswith('http'):
+            suffixes = ['/video', '/video?x.mjpeg', '/mjpegfeed', '/video_feed']
+            base_url = camera_source.rstrip('/')
+            
+            for suffix in suffixes:
+                # Don't append if it already has it
+                if any(base_url.endswith(s) for s in suffixes):
+                    break
+                    
+                new_url = base_url + suffix
+                logger.info(f"Initial connection failed. Retrying with suffix: {new_url}")
+                temp_cap = cv2.VideoCapture(new_url)
+                if temp_cap.isOpened():
+                    self.camera = temp_cap
+                    camera_source = new_url
+                    logger.info(f"Successfully connected to {new_url}")
+                    break
+
         if not self.camera.isOpened():
+            # Fallback to default backend
             self.camera = cv2.VideoCapture(camera_source)
         
         if not self.camera.isOpened():
@@ -566,6 +591,9 @@ class RealtimeRecognitionSystem:
                             'best_crop': face_crop,
                             'frames_collected': 1
                         }
+
+                # Draw detection
+                self.draw_detection(frame, face_id, face_data)
                 
             # Cleanup stale collectors (e.g. face lost before collection finished)
             now = time.time()
@@ -573,9 +601,6 @@ class RealtimeRecognitionSystem:
                          if now - data['start_time'] > 5.0]
             for fid in stale_ids:
                 del self.collecting_faces[fid]
-            
-            # Draw detection
-            self.draw_detection(frame, face_id, face_data)
             
             # Add frame info
             info_text = f"Faces: {len(tracked_faces)} | Registered: {self.registered_count} | Frame: {frame_count}"
