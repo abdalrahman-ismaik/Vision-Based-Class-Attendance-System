@@ -227,16 +227,48 @@ class RealtimeRecognitionSystem:
     
     def __init__(self, 
                  camera_source: int = 0,
-                 backend_url: str = 'http://127.0.0.1:5000/api/students/recognize'):
+                 backend_url: str = 'http://127.0.0.1:5000/api/students/recognize',
+                 attendance_url: Optional[str] = None,
+                 attendance_class_id: Optional[str] = None,
+                 attendance_threshold: Optional[float] = None,
+                 attendance_cooldown: float = 10.0):
         """
         Initialize real-time recognition system.
         
         Args:
             camera_source: Camera index or video file path
             backend_url: Backend recognition API endpoint
+            attendance_url: Optional attendance submission endpoint
+            attendance_class_id: Class ID to attach to attendance submissions
+            attendance_threshold: Optional threshold forwarded to attendance API
+            attendance_cooldown: Minimum seconds between submissions per student
         """
         # Allow overriding via environment variable if provided
         self.backend_url = os.environ.get('BACKEND_RECOGNITION_URL', backend_url)
+        self.attendance_url = os.environ.get('ATTENDANCE_URL', attendance_url)
+        self.attendance_class_id = os.environ.get('ATTENDANCE_CLASS_ID', attendance_class_id)
+
+        threshold_env = os.environ.get('ATTENDANCE_THRESHOLD')
+        if threshold_env is not None:
+            try:
+                self.attendance_threshold = float(threshold_env)
+            except ValueError:
+                logger.warning("Invalid ATTENDANCE_THRESHOLD env value; ignoring")
+                self.attendance_threshold = attendance_threshold
+        else:
+            self.attendance_threshold = attendance_threshold
+
+        cooldown_env = os.environ.get('ATTENDANCE_COOLDOWN')
+        if cooldown_env is not None:
+            try:
+                self.attendance_cooldown = float(cooldown_env)
+            except ValueError:
+                logger.warning("Invalid ATTENDANCE_COOLDOWN env value; defaulting")
+                self.attendance_cooldown = attendance_cooldown
+        else:
+            self.attendance_cooldown = attendance_cooldown
+
+        self.attendance_history: Dict[str, float] = {}
         self.detector = FaceDetector()
         # Increased max_disappeared to 30 to prevent ID switching on temporary detection loss
         self.tracker = FaceTracker(iou_threshold=0.3, max_disappeared=30)
@@ -291,6 +323,11 @@ class RealtimeRecognitionSystem:
         
         logger.info(f"Camera opened successfully (source={camera_source})")
         logger.info(f"Backend API: {backend_url}")
+        if self._attendance_enabled():
+            logger.info(
+                f"Attendance submissions enabled -> URL: {self.attendance_url}, class: {self.attendance_class_id}, "
+                f"cooldown: {self.attendance_cooldown}s"
+            )
     
     def recognize_face_async(self, face_id: int, face_crop: np.ndarray):
         """
@@ -352,6 +389,9 @@ class RealtimeRecognitionSystem:
                 if student_id not in self.registered_ids:
                     self.registered_ids.add(student_id)
                     self.registered_count += 1
+
+                # Attempt attendance submission for recognized students
+                self._submit_attendance(student_id, face_crop, confidence)
             else:
                 label = 'Unknown'
                 confidence = data.get('confidence', 0.0)
@@ -363,6 +403,44 @@ class RealtimeRecognitionSystem:
         except Exception as e:
             logger.error(f"Recognition error for face {face_id}: {e}")
             self.tracker.set_label(face_id, 'Unknown', 0.0)
+
+    def _attendance_enabled(self) -> bool:
+        """Return True if attendance submissions are configured."""
+        return bool(self.attendance_url and self.attendance_class_id)
+
+    def _submit_attendance(self, student_id: str, face_crop: np.ndarray, confidence: float):
+        """Send recognized face to the attendance endpoint."""
+        if not self._attendance_enabled():
+            return
+
+        # Throttle submissions per student
+        now = time.time()
+        last_sent = self.attendance_history.get(student_id, 0)
+        if now - last_sent < self.attendance_cooldown:
+            return
+
+        try:
+            _, buffer = cv2.imencode('.jpg', face_crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
+            files = {
+                'image': ('attendance.jpg', buffer.tobytes(), 'image/jpeg')
+            }
+            data = {'class_id': self.attendance_class_id}
+            if self.attendance_threshold is not None:
+                data['threshold'] = str(self.attendance_threshold)
+
+            response = requests.post(
+                self.attendance_url,
+                data=data,
+                files=files,
+                timeout=30
+            )
+            response.raise_for_status()
+            self.attendance_history[student_id] = now
+            logger.info(
+                f"Attendance submitted for student {student_id} (confidence={confidence:.2f}) -> {response.status_code}"
+            )
+        except Exception as exc:
+            logger.error(f"Attendance submission failed for {student_id}: {exc}")
     
     def calculate_face_quality(self, face_img: np.ndarray) -> float:
         """

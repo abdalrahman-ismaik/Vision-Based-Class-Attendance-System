@@ -44,7 +44,7 @@ class FaceDetector:
         """Initialize face detector"""
         try:
             # Try importing from FaceNet utils
-            sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../', '../', 'FaceNet'))
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'FaceNet'))
             from utils.utils import RetinaFacePyPIAdapter
             self.detector = RetinaFacePyPIAdapter(threshold=threshold)
             logger.info(f"✓ Face detector initialized with threshold={threshold}")

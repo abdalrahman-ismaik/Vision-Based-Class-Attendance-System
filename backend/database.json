@@ -285,5 +285,23 @@
     "num_poses_captured": 5,
     "num_samples_total": 100,
     "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\100061486\\embeddings.npy"
+  },
+  "100060000": {
+    "uuid": "15e538ee-d828-4a3d-874b-a18410faa1a3",
+    "student_id": "100060000",
+    "name": "jeff",
+    "email": "",
+    "department": "",
+    "year": null,
+    "image_paths": [
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100060000/100060000_pose1_20251125_235021.png"
+    ],
+    "num_poses": 1,
+    "registered_at": "2025-11-25T23:50:21.761703",
+    "processing_status": "completed",
+    "processed_at": "2025-11-25T23:50:24.404169",
+    "num_poses_captured": 1,
+    "num_samples_total": 20,
+    "embeddings_path": "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/processed_faces/100060000/embeddings.npy"
   }
 }

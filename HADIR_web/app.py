@@ -62,6 +62,30 @@ def parse_args():
         action='store_true',
         help='Enable debug mode'
     )
+    parser.add_argument(
+        '--attendance-url',
+        type=str,
+        default=None,
+        help='Optional attendance submission endpoint (default: disabled)'
+    )
+    parser.add_argument(
+        '--class-id',
+        type=str,
+        default=None,
+        help='Class identifier to send with attendance submissions'
+    )
+    parser.add_argument(
+        '--attendance-threshold',
+        type=float,
+        default=None,
+        help='Optional confidence threshold forwarded to the attendance endpoint (0-1)'
+    )
+    parser.add_argument(
+        '--attendance-cooldown',
+        type=float,
+        default=10.0,
+        help='Minimum seconds between attendance submissions per student (default: 10)'
+    )
     return parser.parse_args()
 
 
@@ -73,7 +97,8 @@ CORS(app)
 recognition_system = None
 
 
-def create_app(camera_source, backend_url):
+def create_app(camera_source, backend_url, class_id=None, attendance_url=None,
+              attendance_threshold=None, attendance_cooldown=10.0):
     """Create and configure the Flask application."""
     global recognition_system
     
@@ -89,7 +114,11 @@ def create_app(camera_source, backend_url):
         # Initialize recognition system
         recognition_system = RealtimeRecognitionSystem(
             camera_source=camera_source,
-            backend_url=backend_url
+            backend_url=backend_url,
+            attendance_url=attendance_url,
+            attendance_class_id=class_id,
+            attendance_threshold=attendance_threshold,
+            attendance_cooldown=attendance_cooldown
         )
         
         logger.info("✓ HADIR_web initialized successfully")
@@ -153,7 +182,14 @@ def main():
     
     try:
         # Create app with configuration
-        create_app(args.camera, args.backend)
+        create_app(
+            camera_source=args.camera,
+            backend_url=args.backend,
+            class_id=args.class_id,
+            attendance_url=args.attendance_url,
+            attendance_threshold=args.attendance_threshold,
+            attendance_cooldown=args.attendance_cooldown
+        )
         
         # Print startup info
         print("\n" + "="*60)
@@ -161,6 +197,10 @@ def main():
         print("="*60)
         print(f"\n  📹 Camera: {args.camera}")
         print(f"  🔗 Backend API: {args.backend}")
+        if args.attendance_url and args.class_id:
+            print(f"  📝 Attendance API: {args.attendance_url} (class {args.class_id})")
+        elif args.class_id and not args.attendance_url:
+            print("  ⚠️ Attendance URL not provided; attendance submission disabled")
         print(f"  🌐 Server: http://{args.host}:{args.port}")
         print(f"\n  Open http://{args.host}:{args.port} in your browser")
         print("\n  Press Ctrl+C to stop the server")

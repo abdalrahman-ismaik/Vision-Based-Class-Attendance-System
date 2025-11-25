@@ -12,6 +12,7 @@ python app.py
 ```
 
 You should see:
+
 ```
 * Running on http://127.0.0.1:5000
 ```
@@ -47,6 +48,7 @@ python app.py
 ```
 
 You should see:
+
 ```
 ============================================================
   🎓 HADIR Live Attendance System
@@ -69,6 +71,7 @@ Open your web browser and navigate to:
 **http://127.0.0.1:5001**
 
 You should see:
+
 - Live camera feed
 - Face detection boxes
 - Green boxes for registered students
@@ -125,6 +128,7 @@ python app.py
 ### Issue: No faces detected
 
 **Solutions:**
+
 - Ensure good lighting
 - Face the camera directly
 - Move closer to camera
@@ -141,22 +145,24 @@ curl -L -o face_detection_yunet_2023mar.onnx https://github.com/opencv/opencv_zo
 
 ## 📊 Expected Performance
 
-| Metric | Expected Value |
-|--------|----------------|
-| FPS | 15-20 |
-| Detection Time | 50-100ms |
-| Recognition Time | 200-500ms |
-| Latency | <1 second |
+| Metric           | Expected Value |
+| ---------------- | -------------- |
+| FPS              | 15-20          |
+| Detection Time   | 50-100ms       |
+| Recognition Time | 200-500ms      |
+| Latency          | <1 second      |
 
 ## 🎨 UI Features
 
 ### Statistics Cards
+
 - **Total Detected:** Count of all face detections
 - **Registered:** Count of recognized students
 - **Unknown:** Count of unregistered faces
 - **Last Update:** Current time
 
 ### Recent Detections List
+
 - Shows last 50 detections
 - Sorted by newest first
 - Green border for registered
@@ -164,10 +170,12 @@ curl -L -o face_detection_yunet_2023mar.onnx https://github.com/opencv/opencv_zo
 - Includes timestamp and confidence
 
 ### Video Controls
+
 - **Fullscreen button:** Expand video to full screen
 - **ESC key:** Exit fullscreen
 
 ### Other Features
+
 - **Clear button:** Clear all detections
 - **FPS counter:** Shows current frame rate
 - **Faces counter:** Shows current face count
@@ -198,6 +206,18 @@ python app.py --port 8080
 python app.py --debug
 ```
 
+### Record Attendance in Backend
+
+Send each successful recognition to the backend attendance API by providing the class ID and endpoint:
+
+```powershell
+python app.py --class-id CS101 --attendance-url http://127.0.0.1:5000/api/attendance/class
+```
+
+Optional flags:
+- `--attendance-threshold 0.75` forwards a confidence threshold to the backend.
+- `--attendance-cooldown 15` limits how often the same student is submitted (seconds).
+
 ## 📝 Next Steps
 
 Now that HADIR_web is running:
@@ -219,6 +239,7 @@ Now that HADIR_web is running:
 ## 🆘 Need Help?
 
 Check the full README.md for:
+
 - Detailed architecture
 - Troubleshooting guide
 - Performance optimization
