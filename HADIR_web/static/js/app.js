@@ -62,8 +62,19 @@ class AttendanceMonitor {
         const statusText = document.getElementById('backend-text');
         const backendUrl = document.getElementById('backend-url')?.textContent || 'http://127.0.0.1:5000';
         
+        // Remove trailing slash if present
+        const cleanBackendUrl = backendUrl.replace(/\/$/, '');
+        
         try {
-            const response = await fetch(`${backendUrl}/api/health/status`, {
+            // Fix: Ensure we don't double-append /api if backendUrl already has it
+            // But typically backendUrl is just the host. 
+            // The issue was likely `${backendUrl}/api/health/status` where backendUrl might have been '.../api'
+            // Or the user provided backendUrl in the UI includes /api.
+            
+            // Let's assume backendUrl is the base URL (e.g. http://localhost:5000)
+            // The endpoint is /api/health/status
+            
+            const response = await fetch(`${cleanBackendUrl}/api/health/status`, {
                 method: 'GET',
                 mode: 'cors'
             });

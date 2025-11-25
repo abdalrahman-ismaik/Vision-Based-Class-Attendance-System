@@ -238,7 +238,8 @@ class RealtimeRecognitionSystem:
         # Allow overriding via environment variable if provided
         self.backend_url = os.environ.get('BACKEND_RECOGNITION_URL', backend_url)
         self.detector = FaceDetector()
-        self.tracker = FaceTracker(iou_threshold=0.3, max_disappeared=10)
+        # Increased max_disappeared to 30 to prevent ID switching on temporary detection loss
+        self.tracker = FaceTracker(iou_threshold=0.3, max_disappeared=30)
 
         # Track unique registered IDs and count
         self.registered_ids: set[str] = set()
@@ -246,7 +247,10 @@ class RealtimeRecognitionSystem:
         
         # Request throttling to prevent overwhelming backend
         self.pending_recognitions = {}  # {face_id: timestamp}
-        self.recognition_cooldown = 2.0  # seconds between recognition requests per face
+        self.recognition_cooldown = 1.0  # seconds between recognition requests per face
+        
+        # Buffer for collecting best frames
+        self.collecting_faces = {}  # {face_id: {'start_time': float, 'best_score': float, 'best_crop': img}}
         
         # Open camera
         self.camera = cv2.VideoCapture(camera_source, cv2.CAP_DSHOW)
@@ -281,12 +285,34 @@ class RealtimeRecognitionSystem:
             # Mark request time
             self.pending_recognitions[face_id] = current_time
             
+            # Save debug image
+            debug_dir = os.path.join(os.path.dirname(__file__), 'debug_faces')
+            os.makedirs(debug_dir, exist_ok=True)
+            timestamp = datetime.now().strftime('%H%M%S_%f')
+            debug_path = os.path.join(debug_dir, f"face_{face_id}_{timestamp}.jpg")
+            cv2.imwrite(debug_path, face_crop)
+            logger.info(f"Saved debug face image to {debug_path}")
+            
             # Encode image as JPEG
             _, buffer = cv2.imencode('.jpg', face_crop, [cv2.IMWRITE_JPEG_QUALITY, 85])
             
             # Send to backend
             files = {'image': ('face.jpg', buffer.tobytes(), 'image/jpeg')}
             response = requests.post(self.backend_url, files=files, timeout=30)
+            
+            # Handle 404 gracefully (No face detected or classifier not trained)
+            if response.status_code == 404:
+                try:
+                    data = response.json()
+                    if 'error' in data:
+                        logger.warning(f"Backend recognition info for face {face_id}: {data['error']}")
+                        self.tracker.set_label(face_id, 'Unknown', 0.0)
+                        return
+                except ValueError:
+                    # Not JSON, probably a real 404 (endpoint not found)
+                    logger.error(f"Backend endpoint not found (404): {self.backend_url}")
+                    pass
+            
             response.raise_for_status()
             
             data = response.json()
@@ -313,6 +339,32 @@ class RealtimeRecognitionSystem:
             logger.error(f"Recognition error for face {face_id}: {e}")
             self.tracker.set_label(face_id, 'Unknown', 0.0)
     
+    def calculate_face_quality(self, face_img: np.ndarray) -> float:
+        """
+        Calculate a quality score for the face image.
+        Higher is better. Based on sharpness and brightness.
+        """
+        if face_img is None or face_img.size == 0:
+            return 0.0
+            
+        gray = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
+        
+        # Sharpness (Laplacian variance)
+        sharpness = cv2.Laplacian(gray, cv2.CV_64F).var()
+        
+        # Brightness check (penalize too dark or too bright)
+        mean_brightness = np.mean(gray)
+        if mean_brightness < 40 or mean_brightness > 215:
+            brightness_penalty = 0.5
+        else:
+            brightness_penalty = 1.0
+            
+        # Size score (larger is better, up to a point)
+        h, w = face_img.shape[:2]
+        size_score = min(w * h, 40000) / 40000.0  # Normalize roughly
+        
+        return sharpness * brightness_penalty * (1.0 + size_score)
+
     def draw_detection(self, frame: np.ndarray, face_id: int, face_data: dict):
         """
         Draw bounding box and label on frame.
@@ -336,12 +388,14 @@ class RealtimeRecognitionSystem:
         cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
         
         # Prepare label text
-        if label and label != 'Unknown':
+        if label and label != 'Unknown' and label != 'Scanning...' and label != 'Processing...':
             text = f"{label}"
             if confidence > 0:
                 text += f" ({confidence:.2f})"
         elif label == 'Unknown':
             text = "Unknown"
+        elif label == 'Scanning...':
+            text = "Scanning..."
         else:
             text = "Processing..."
         
@@ -418,28 +472,110 @@ class RealtimeRecognitionSystem:
                 x, y, w, h = face_data['bbox']
                 is_new = face_data.get('is_new', False)
                 
-                # If new face, trigger background recognition
-                if is_new:
-                    # Extract face crop with padding
-                    pad = int(0.2 * max(w, h))
-                    x0 = max(x - pad, 0)
-                    y0 = max(y - pad, 0)
-                    x1 = min(x + w + pad, frame.shape[1])
-                    y1 = min(y + h + pad, frame.shape[0])
-                    face_crop = frame[y0:y1, x0:x1].copy()
-                    
-                    # Set processing label
-                    self.tracker.set_label(face_id, 'Processing...', 0.0)
-                    
-                    # Start background recognition
-                    threading.Thread(
-                        target=self.recognize_face_async,
-                        args=(face_id, face_crop),
-                        daemon=True
-                    ).start()
+                # Extract face crop with padding (needed for quality check)
+                # Increased padding to 40% to give backend more context
+                pad = int(0.4 * max(w, h))
+                x0 = max(x - pad, 0)
+                y0 = max(y - pad, 0)
+                x1 = min(x + w + pad, frame.shape[1])
+                y1 = min(y + h + pad, frame.shape[0])
+                face_crop = frame[y0:y1, x0:x1].copy()
                 
-                # Draw detection
-                self.draw_detection(frame, face_id, face_data)
+                # Calculate quality
+                quality_score = self.calculate_face_quality(face_crop)
+
+                # Logic for new/collecting faces
+                if is_new:
+                    logger.info(f"New face detected (ID: {face_id}). Starting scan...")
+                    # Start collecting
+                    self.collecting_faces[face_id] = {
+                        'start_time': time.time(),
+                        'best_score': quality_score,
+                        'best_crop': face_crop,
+                        'frames_collected': 1
+                    }
+                    self.tracker.set_label(face_id, 'Scanning...', 0.0)
+                
+                elif face_id in self.collecting_faces:
+                    # Continue collecting
+                    collector = self.collecting_faces[face_id]
+                    collector['frames_collected'] += 1
+                    
+                    # Update best if current is better
+                    if quality_score > collector['best_score']:
+                        collector['best_score'] = quality_score
+                        collector['best_crop'] = face_crop
+                    
+                    # Check if done collecting (e.g., 0.8s or 15 frames)
+                    elapsed = time.time() - collector['start_time']
+                    if elapsed > 0.8 or collector['frames_collected'] > 15:
+                        # Check minimum quality threshold
+                        MIN_QUALITY_THRESHOLD = 80.0  # Lowered to be more permissive for webcams
+                        
+                        if collector['best_score'] >= MIN_QUALITY_THRESHOLD:
+                            # Send best frame
+                            logger.info(f"Sending best frame for face {face_id} (Score: {collector['best_score']:.2f})")
+                            self.tracker.set_label(face_id, 'Processing...', 0.0)
+                            threading.Thread(
+                                target=self.recognize_face_async,
+                                args=(face_id, collector['best_crop']),
+                                daemon=True
+                            ).start()
+                            del self.collecting_faces[face_id]
+                        else:
+                            # Quality too low, reset collection or mark as unknown/low quality
+                            # For now, let's retry collection by resetting start time but keeping ID
+                            # Or just give up to avoid infinite scanning loop if camera is bad
+                            logger.warning(f"Face {face_id} quality too low ({collector['best_score']:.2f}). Retrying scan...")
+                            collector['start_time'] = time.time()
+                            collector['frames_collected'] = 0
+                            collector['best_score'] = 0.0
+                            self.tracker.set_label(face_id, 'Low Quality', 0.0)
+                    else:
+                         # Debug log for quality (throttled)
+                         if collector['frames_collected'] % 5 == 0:
+                             logger.debug(f"Face {face_id} scanning... Current score: {quality_score:.2f}")
+                         self.tracker.set_label(face_id, 'Scanning...', 0.0)
+                
+                else:
+                    # Not new, and not collecting.
+                    
+                    # RETRY LOGIC: If confidence is low (< 0.8), keep checking
+                    current_label = face_data.get('label')
+                    current_conf = face_data.get('confidence', 0.0)
+                    
+                    # Only retry if we have a result (not Processing/Scanning) and confidence is low
+                    if current_label not in (None, 'Processing...', 'Scanning...') and current_conf < 0.8:
+                        # Check cooldown
+                        last_request = self.pending_recognitions.get(face_id, 0)
+                        if time.time() - last_request > self.recognition_cooldown:
+                            logger.info(f"Face {face_id} confidence low ({current_conf:.2f}). Rescanning...")
+                            self.collecting_faces[face_id] = {
+                                'start_time': time.time(),
+                                'best_score': quality_score,
+                                'best_crop': face_crop,
+                                'frames_collected': 1
+                            }
+                            self.tracker.set_label(face_id, 'Scanning...', current_conf)
+
+                    # If label is 'Scanning...', it means we lost state (e.g. cleanup). Restart collection.
+                    if face_data.get('label') == 'Scanning...':
+                        self.collecting_faces[face_id] = {
+                            'start_time': time.time(),
+                            'best_score': quality_score,
+                            'best_crop': face_crop,
+                            'frames_collected': 1
+                        }
+                
+            # Cleanup stale collectors (e.g. face lost before collection finished)
+            now = time.time()
+            stale_ids = [fid for fid, data in self.collecting_faces.items() 
+                         if now - data['start_time'] > 5.0]
+            for fid in stale_ids:
+                del self.collecting_faces[fid]
+            
+            # Draw detection
+            self.draw_detection(frame, face_id, face_data)
             
             # Add frame info
             info_text = f"Faces: {len(tracked_faces)} | Registered: {self.registered_count} | Frame: {frame_count}"

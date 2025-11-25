@@ -381,6 +381,21 @@ class StudentList(Resource):
                         db[student_id]['embeddings_path'] = result['embeddings_path']
                         save_database(db)
                         logger.info(f"✓ Face processing completed for {student_id}: {result['num_samples_total']} samples from {result['num_poses_captured']} poses")
+                        
+                        # Trigger classifier training
+                        try:
+                            logger.info("Starting classifier training...")
+                            classifier_path = os.path.join(app.config['CLASSIFIERS_FOLDER'], 'classifier.pkl')
+                            train_result = pipeline.train_classifier_from_data(
+                                data_dir=app.config['PROCESSED_FACES_FOLDER'],
+                                classifier_output_path=classifier_path
+                            )
+                            logger.info(f"✓ Classifier training completed. Accuracy: {train_result['metrics'].get('average_test_accuracy', 0):.2f}")
+                        except ValueError as ve:
+                            logger.warning(f"Skipping classifier training: {ve}")
+                        except Exception as e:
+                            logger.error(f"Classifier training failed: {e}")
+
                     else:
                         db[student_id]['processing_status'] = 'failed'
                         db[student_id]['processing_error'] = 'No face detected'
@@ -523,7 +538,7 @@ class TrainClassifier(Resource):
                 }, 400
             
             # Train classifier
-            classifier_path = os.path.join(app.config['CLASSIFIERS_FOLDER'], 'face_classifier.pkl')
+            classifier_path = os.path.join(app.config['CLASSIFIERS_FOLDER'], 'classifier.pkl')
             
             logger.info("Starting classifier training...")
             result = pipeline.train_classifier_from_data(
@@ -620,9 +635,28 @@ class ProcessStudentFace(Resource):
                 
                 logger.info(f"✓ Processing completed for {student_id}")
                 
+                # Trigger classifier training
+                training_info = {}
+                try:
+                    logger.info("Starting classifier training...")
+                    classifier_path = os.path.join(app.config['CLASSIFIERS_FOLDER'], 'classifier.pkl')
+                    train_result = pipeline.train_classifier_from_data(
+                        data_dir=app.config['PROCESSED_FACES_FOLDER'],
+                        classifier_output_path=classifier_path
+                    )
+                    logger.info(f"✓ Classifier training completed. Accuracy: {train_result['metrics'].get('average_test_accuracy', 0):.2f}")
+                    training_info = {'training_status': 'success', 'accuracy': train_result['metrics'].get('average_test_accuracy', 0)}
+                except ValueError as ve:
+                    logger.warning(f"Skipping classifier training: {ve}")
+                    training_info = {'training_status': 'skipped', 'reason': str(ve)}
+                except Exception as e:
+                    logger.error(f"Classifier training failed: {e}")
+                    training_info = {'training_status': 'failed', 'error': str(e)}
+                
                 return {
                     'message': 'Face processing completed',
-                    'result': result
+                    'result': result,
+                    'training': training_info
                 }, 200
             else:
                 database[student_id]['processing_status'] = 'failed'
@@ -661,7 +695,7 @@ class RecognizeFace(Resource):
                 return {'error': 'Face processing pipeline not available'}, 500
             
             # Check if classifier is trained
-            classifier_path = os.path.join(app.config['CLASSIFIERS_FOLDER'], 'face_classifier.pkl')
+            classifier_path = os.path.join(app.config['CLASSIFIERS_FOLDER'], 'classifier.pkl')
             if not os.path.exists(classifier_path):
                 return {
                     'error': 'Classifier not trained yet. Please train the classifier first.',
@@ -691,7 +725,8 @@ class RecognizeFace(Resource):
             file.save(temp_path)
             
             # Recognize face
-            result = pipeline.recognize_face(temp_path, threshold=0.5)
+            # Lower threshold to 0.35 to improve recall for webcams
+            result = pipeline.recognize_face(temp_path, threshold=0.35)
             
             # Clean up temp file
             try:
@@ -749,7 +784,7 @@ class VerifyStudentFace(Resource):
                 return {'error': 'Face processing pipeline not available'}, 500
             
             # Check if classifier is trained
-            classifier_path = os.path.join(app.config['CLASSIFIERS_FOLDER'], 'face_classifier.pkl')
+            classifier_path = os.path.join(app.config['CLASSIFIERS_FOLDER'], 'classifier.pkl')
             if not os.path.exists(classifier_path):
                 return {
                     'error': 'Classifier not trained yet. Please train the classifier first.',
@@ -1206,7 +1241,7 @@ class ClassAttendance(Resource):
             return {'error': 'Face processing pipeline not available'}, 500
 
         # Check if classifier is trained
-        classifier_path = os.path.join(app.config['CLASSIFIERS_FOLDER'], 'face_classifier.pkl')
+        classifier_path = os.path.join(app.config['CLASSIFIERS_FOLDER'], 'classifier.pkl')
         if not os.path.exists(classifier_path):
             return {
                 'error': 'Classifier not trained yet. Please train the classifier first.',

@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:image/image.dart' as img;
+import 'package:path_provider/path_provider.dart';
 import 'package:hadir_mobile_full/core/config/sync_config.dart';
 import 'package:hadir_mobile_full/core/models/sync_models.dart';
 import 'package:hadir_mobile_full/shared/data/data_sources/local_database_data_source.dart';
@@ -267,10 +269,13 @@ class SyncService {
 
     // Add images
     for (var i = 0; i < imageFiles.length; i++) {
+      // Fix orientation (rotate 180 degrees) before upload
+      final fixedImage = await _fixImageOrientation(imageFiles[i]);
+      
       formData.files.add(MapEntry(
         'images',
         await MultipartFile.fromFile(
-          imageFiles[i].path,
+          fixedImage.path,
           filename: '${student.studentId}_pose${i + 1}.jpg',
         ),
       ));
@@ -516,6 +521,30 @@ class SyncService {
         return true;
       }
       return false;
+    }
+  }
+
+  /// Fix image orientation by rotating 180 degrees
+  Future<File> _fixImageOrientation(File imageFile) async {
+    try {
+      final bytes = await imageFile.readAsBytes();
+      final image = img.decodeImage(bytes);
+      
+      if (image == null) return imageFile;
+      
+      // Rotate 180 degrees
+      final rotated = img.copyRotate(image, angle: 180);
+      
+      // Save to temp file
+      final tempDir = await getTemporaryDirectory();
+      final tempPath = '${tempDir.path}/rotated_${DateTime.now().millisecondsSinceEpoch}_${imageFile.uri.pathSegments.last}';
+      final tempFile = File(tempPath);
+      
+      await tempFile.writeAsBytes(img.encodeJpg(rotated));
+      return tempFile;
+    } catch (e) {
+      _logError('[SYNC] Error rotating image: $e');
+      return imageFile;
     }
   }
 

@@ -6,6 +6,8 @@ library;
 
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:image/image.dart' as img;
+import 'package:path_provider/path_provider.dart';
 import 'package:hadir_mobile_full/shared/domain/entities/student.dart';
 import 'backend_config_service.dart';
 
@@ -132,10 +134,13 @@ class BackendRegistrationService {
       // Add all 5 images with the SAME field name 'images'
       // This allows backend to use request.files.getlist('images')
       for (var i = 0; i < imageFiles.length; i++) {
+        // Fix orientation (rotate 180 degrees) before upload
+        final fixedImage = await _fixImageOrientation(imageFiles[i]);
+        
         formData.files.add(MapEntry(
           'images',  // Same field name for all images
           await MultipartFile.fromFile(
-            imageFiles[i].path,
+            fixedImage.path,
             filename: '${student.studentId}_pose${i + 1}.jpg',
           ),
         ));
@@ -269,6 +274,31 @@ class BackendRegistrationService {
         return true;
       }
       return false;
+    }
+  }
+  
+  /// Fix image orientation by rotating 180 degrees
+  /// This is a workaround for emulator/device camera issues where images are upside down
+  Future<File> _fixImageOrientation(File imageFile) async {
+    try {
+      final bytes = await imageFile.readAsBytes();
+      final image = img.decodeImage(bytes);
+      
+      if (image == null) return imageFile;
+      
+      // Rotate 180 degrees
+      final rotated = img.copyRotate(image, angle: 180);
+      
+      // Save to temp file
+      final tempDir = await getTemporaryDirectory();
+      final tempPath = '${tempDir.path}/rotated_${DateTime.now().millisecondsSinceEpoch}_${imageFile.uri.pathSegments.last}';
+      final tempFile = File(tempPath);
+      
+      await tempFile.writeAsBytes(img.encodeJpg(rotated));
+      return tempFile;
+    } catch (e) {
+      print('Error rotating image: $e');
+      return imageFile;
     }
   }
 }

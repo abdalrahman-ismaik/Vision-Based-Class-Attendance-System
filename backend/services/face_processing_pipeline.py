@@ -635,6 +635,7 @@ class FaceProcessingPipeline:
         # Process each pose
         for idx, image_path in enumerate(image_paths, 1):
             try:
+                logger.info(f"Step 1/3: Loading and detecting face in image {idx}/{len(image_paths)}")
                 # Load image
                 image = Image.open(image_path).convert('RGB')
                 
@@ -664,6 +665,7 @@ class FaceProcessingPipeline:
                 # Crop face
                 face_image = image.crop((x1, y1, x2, y2))
                 
+                logger.info(f"Step 2/3: Generating {augment_per_image} augmentations for image {idx}")
                 # Apply augmentation if requested
                 if augment_per_image > 0:
                     # Generate augmentations for this pose
@@ -674,6 +676,7 @@ class FaceProcessingPipeline:
                     # Just use the original face without augmentation
                     augmented_images = [face_image]
                 
+                logger.info(f"Step 3/3: Generating embeddings for {len(augmented_images)} variations of image {idx}")
                 # Process each augmented version
                 for aug_idx, aug_img in enumerate(augmented_images):
                     # Resize to standard size (112x112 for MobileFaceNet)
