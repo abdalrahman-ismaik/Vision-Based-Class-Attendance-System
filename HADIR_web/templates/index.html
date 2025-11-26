@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HADIR - Live Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Compact Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>HADIR Live</h1>
+                <div class="status-badges">
+                    <span class="badge" id="backend-badge">
+                        <span id="backend-status" class="status-dot">●</span>
+                        Backend
+                    </span>
+                    <span class="badge" id="camera-badge">
+                        <span id="camera-status" class="status-dot">●</span>
+                        Camera
+                    </span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div id="class-info" class="class-info hidden">
+                    <span id="current-class-name"></span>
+                </div>
+                <button id="stop-class-btn" class="btn btn-danger hidden">Stop</button>
+            </div>
+        </header>
+
+        <!-- Setup Section -->
+        <div class="setup-section" id="setup-section">
+            <div class="setup-card">
+                <h2>Start Class Session</h2>
+                <div class="form-group">
+                    <select id="class-select" class="form-select">
+                        <option value="">Loading classes...</option>
+                    </select>
+                </div>
+                <button id="start-class-btn" class="btn btn-primary">Start Session</button>
+            </div>
+        </div>
+
+        <!-- Main View (Initially Hidden) -->
+        <div class="main-view hidden" id="main-view">
+            <!-- Stats Row -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-label">Session Time</div>
+                    <div class="stat-value" id="session-time">00:00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Detections</div>
+                    <div class="stat-value" id="total-detections">0</div>
+                </div>
+                <div class="stat-card stat-success">
+                    <div class="stat-label">Registered</div>
+                    <div class="stat-value" id="registered-count">0</div>
+                </div>
+                <div class="stat-card stat-warning">
+                    <div class="stat-label">Unknown</div>
+                    <div class="stat-value" id="unknown-count">0</div>
+                </div>
+            </div>
+
+            <!-- Video and Detections Row -->
+            <div class="content-row">
+                <!-- Video Feed -->
+                <div class="video-panel">
+                    <div class="video-container" id="video-container">
+                        <img id="video-feed" src="" alt="Live feed">
+                        <div class="video-overlay">
+                            <span id="fps-counter">FPS: --</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Detections -->
+                <div class="detections-panel">
+                    <div class="panel-header">
+                        <h3>Recent Detections</h3>
+                        <button id="clear-btn" class="btn btn-sm">Clear</button>
+                    </div>
+                    <div class="detections-list" id="detections-log">
+                        <div class="empty-state">No detections yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
