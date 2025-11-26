@@ -4,7 +4,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.16+-blue.svg)](https://flutter.dev/)
 [![Flask](https://img.shields.io/badge/Flask-3.0.0-green.svg)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Course](https://img.shields.io/badge/Course-COSC3030-orange.svg)](#)
+[![Course](https://img.shields.io/badge/Course-COSC330-orange.svg)](#)
 
 ![alt text](docs/bf017508-c5a2-4a1d-847e-357673aae70d.jpeg)
 
