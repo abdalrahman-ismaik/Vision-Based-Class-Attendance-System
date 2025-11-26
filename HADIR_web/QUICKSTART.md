@@ -55,7 +55,8 @@ You should see:
 ============================================================
 
   📹 Camera: 0
-  🔗 Backend API: http://127.0.0.1:5000/api/students/recognize
+  🔗 Backend API: http://127.0.0.1:5000/api/attendance/class
+  🏫 Class ID: (set from the dashboard)
   🌐 Server: http://127.0.0.1:5001
 
   Open http://127.0.0.1:5001 in your browser
@@ -208,15 +209,22 @@ python app.py --debug
 
 ### Record Attendance in Backend
 
-Send each successful recognition to the backend attendance API by providing the class ID and endpoint:
+By default HADIR_web sends detections to `http://127.0.0.1:5000/api/attendance/class`.
+Make sure to set the target class before taking attendance:
+
+1. Pass `--class-id CS101` when starting HADIR_web **or**
+2. Open the dashboard sidebar and use the **Class Configuration** card to save the active Class ID.
 
 ```powershell
-python app.py --class-id CS101 --attendance-url http://127.0.0.1:5000/api/attendance/class
+python app.py --class-id CS101
 ```
 
 Optional flags:
-- `--attendance-threshold 0.75` forwards a confidence threshold to the backend.
-- `--attendance-cooldown 15` limits how often the same student is submitted (seconds).
+
+- `--backend http://<host>:5000/api/attendance/class` if your backend runs elsewhere
+- `--threshold 0.75` to forward a custom confidence threshold to the backend
+
+If no class is set, the web app will pause recognition until you provide one.
 
 ## 📝 Next Steps
 

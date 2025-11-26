@@ -373,6 +373,49 @@ body {
     font-size: 14px;
 }
 
+/* Class Configuration */
+.class-form {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.class-form label {
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.class-form .input-row {
+    display: flex;
+    gap: 10px;
+}
+
+.class-form input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--gray-800);
+}
+
+.class-form .hint {
+    font-size: 12px;
+    color: var(--gray-600);
+}
+
+@media (max-width: 600px) {
+    .class-form .input-row {
+        flex-direction: column;
+    }
+
+    .class-form .input-row .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 /* Buttons */
 .btn {
     padding: 8px 16px;

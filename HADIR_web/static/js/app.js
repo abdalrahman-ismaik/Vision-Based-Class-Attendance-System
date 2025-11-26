@@ -20,6 +20,8 @@ class AttendanceMonitor {
         
         // Setup event listeners
         this.setupEventListeners();
+        this.setupClassForm();
+        this.fetchCurrentClassId();
         
         // Start FPS counter
         this.startFPSCounter();
@@ -55,6 +57,81 @@ class AttendanceMonitor {
                 fullscreenBtn.textContent = '⛶ Fullscreen';
             }
         });
+    }
+
+    setupClassForm() {
+        const input = document.getElementById('class-id-input');
+        const button = document.getElementById('class-save-btn');
+        const hint = document.getElementById('class-hint');
+
+        if (!input || !button) {
+            return;
+        }
+
+        const saveClassId = async () => {
+            const classId = input.value.trim();
+            if (!classId) {
+                this.showToast('Class ID cannot be empty', 'error');
+                return;
+            }
+
+            button.disabled = true;
+            hint.textContent = 'Saving...';
+
+            try {
+                const response = await fetch('/config/class', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ class_id: classId })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update class ID');
+                }
+
+                const data = await response.json();
+                input.value = data.class_id || '';
+                hint.textContent = `Active class: ${data.class_id}`;
+                this.showToast('Class ID updated', 'success');
+            } catch (error) {
+                console.error(error);
+                hint.textContent = 'Unable to update class. Check server logs.';
+                this.showToast('Failed to update class ID', 'error');
+            } finally {
+                button.disabled = false;
+            }
+        };
+
+        button.addEventListener('click', saveClassId);
+        input.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                saveClassId();
+            }
+        });
+    }
+
+    async fetchCurrentClassId() {
+        try {
+            const response = await fetch('/config/class');
+            if (!response.ok) {
+                throw new Error('Failed to fetch class ID');
+            }
+            const data = await response.json();
+            const input = document.getElementById('class-id-input');
+            const hint = document.getElementById('class-hint');
+            if (input && typeof data.class_id !== 'undefined') {
+                input.value = data.class_id || '';
+                if (hint) {
+                    hint.textContent = data.class_id
+                        ? `Active class: ${data.class_id}`
+                        : 'Set the class that will receive attendance submissions.';
+                }
+            }
+        } catch (error) {
+            console.warn('Could not fetch class ID:', error);
+        }
     }
     
     async checkBackendStatus() {

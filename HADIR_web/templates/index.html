@@ -138,6 +138,21 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Class Configuration -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🏫 Class Configuration</h2>
+                    </div>
+                    <div class="class-form">
+                        <label for="class-id-input">Active Class ID</label>
+                        <div class="input-row">
+                            <input id="class-id-input" type="text" placeholder="e.g., CS101" value="{{ class_id or '' }}">
+                            <button id="class-save-btn" type="button" class="btn btn-secondary">Save</button>
+                        </div>
+                        <p class="hint" id="class-hint">Set the class that will receive attendance submissions.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

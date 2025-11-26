@@ -13,13 +13,13 @@ Features:
 - Integration with backend recognition API
 
 Usage:
-    python app.py --camera 0 --backend http://127.0.0.1:5000/api/students/recognize
+    python app.py --camera 0 --backend http://127.0.0.1:5000/api/attendance/class
 """
 
 import os
 import logging
 import argparse
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, request, jsonify
 from flask_cors import CORS
 from realtime_recognition import RealtimeRecognitionSystem
 
@@ -42,8 +42,8 @@ def parse_args():
     parser.add_argument(
         '--backend',
         type=str,
-        default='http://127.0.0.1:5000/api/students/recognize',
-        help='Backend recognition API URL (default: http://127.0.0.1:5000/api/students/recognize)'
+        default='http://127.0.0.1:5000/api/attendance/class',
+        help='Backend recognition API URL (default: http://127.0.0.1:5000/api/attendance/class)'
     )
     parser.add_argument(
         '--host',
@@ -63,28 +63,16 @@ def parse_args():
         help='Enable debug mode'
     )
     parser.add_argument(
-        '--attendance-url',
-        type=str,
-        default=None,
-        help='Optional attendance submission endpoint (default: disabled)'
-    )
-    parser.add_argument(
         '--class-id',
         type=str,
         default=None,
         help='Class identifier to send with attendance submissions'
     )
     parser.add_argument(
-        '--attendance-threshold',
+        '--threshold',
         type=float,
         default=None,
-        help='Optional confidence threshold forwarded to the attendance endpoint (0-1)'
-    )
-    parser.add_argument(
-        '--attendance-cooldown',
-        type=float,
-        default=10.0,
-        help='Minimum seconds between attendance submissions per student (default: 10)'
+        help='Optional confidence threshold forwarded to the backend (0-1)'
     )
     return parser.parse_args()
 
@@ -97,8 +85,7 @@ CORS(app)
 recognition_system = None
 
 
-def create_app(camera_source, backend_url, class_id=None, attendance_url=None,
-              attendance_threshold=None, attendance_cooldown=10.0):
+def create_app(camera_source, backend_url, class_id=None, recognition_threshold=None):
     """Create and configure the Flask application."""
     global recognition_system
     
@@ -115,10 +102,8 @@ def create_app(camera_source, backend_url, class_id=None, attendance_url=None,
         recognition_system = RealtimeRecognitionSystem(
             camera_source=camera_source,
             backend_url=backend_url,
-            attendance_url=attendance_url,
-            attendance_class_id=class_id,
-            attendance_threshold=attendance_threshold,
-            attendance_cooldown=attendance_cooldown
+            class_id=class_id,
+            recognition_threshold=recognition_threshold
         )
         
         logger.info("✓ HADIR_web initialized successfully")
@@ -134,7 +119,8 @@ def create_app(camera_source, backend_url, class_id=None, attendance_url=None,
 def index():
     """Render main dashboard page."""
     backend_base = recognition_system.backend_url.rsplit('/', 2)[0] if recognition_system else 'http://127.0.0.1:5000'
-    return render_template('index.html', backend_url=backend_base)
+    class_id = recognition_system.class_id if recognition_system else ''
+    return render_template('index.html', backend_url=backend_base, class_id=class_id)
 
 
 @app.route('/video_feed')
@@ -159,8 +145,29 @@ def health():
         'status': 'ok',
         'service': 'HADIR_web',
         'camera_active': recognition_system is not None,
-        'backend_url': recognition_system.backend_url if recognition_system else None
+        'backend_url': recognition_system.backend_url if recognition_system else None,
+        'class_id': recognition_system.class_id if recognition_system else None
     }
+
+
+@app.route('/config/class', methods=['GET', 'POST'])
+def configure_class():
+    """Get or update the active class identifier used for recognition submissions."""
+    if recognition_system is None:
+        return jsonify({'error': 'Recognition system not initialized'}), 503
+
+    if request.method == 'GET':
+        return {'class_id': recognition_system.class_id}
+
+    payload = request.get_json(silent=True) or {}
+    new_class_id = payload.get('class_id', '').strip()
+
+    if not new_class_id:
+        return jsonify({'error': 'class_id is required'}), 400
+
+    recognition_system.set_class_id(new_class_id)
+    logger.info(f"Class ID updated via UI -> {new_class_id}")
+    return {'class_id': recognition_system.class_id}
 
 
 @app.errorhandler(404)
@@ -186,9 +193,7 @@ def main():
             camera_source=args.camera,
             backend_url=args.backend,
             class_id=args.class_id,
-            attendance_url=args.attendance_url,
-            attendance_threshold=args.attendance_threshold,
-            attendance_cooldown=args.attendance_cooldown
+                recognition_threshold=args.threshold
         )
         
         # Print startup info
@@ -197,10 +202,10 @@ def main():
         print("="*60)
         print(f"\n  📹 Camera: {args.camera}")
         print(f"  🔗 Backend API: {args.backend}")
-        if args.attendance_url and args.class_id:
-            print(f"  📝 Attendance API: {args.attendance_url} (class {args.class_id})")
-        elif args.class_id and not args.attendance_url:
-            print("  ⚠️ Attendance URL not provided; attendance submission disabled")
+        if args.class_id:
+            print(f"  🏫 Class ID: {args.class_id}")
+        else:
+            print("  ⚠️ Class ID not provided. Set it from the web dashboard before recording attendance.")
         print(f"  🌐 Server: http://{args.host}:{args.port}")
         print(f"\n  Open http://{args.host}:{args.port} in your browser")
         print("\n  Press Ctrl+C to stop the server")

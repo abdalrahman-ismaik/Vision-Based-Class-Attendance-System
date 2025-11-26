@@ -1,291 +1,4 @@
 {
-  "TEST_20251123_221006": {
-    "uuid": "16eb9ceb-14b4-40dc-9d6d-852fd04f3e2e",
-    "student_id": "TEST_20251123_221006",
-    "name": "Test Student 20251123_221006",
-    "email": "test_20251123_221006@example.com",
-    "department": "Computer Science",
-    "year": 3,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\TEST_20251123_221006\\TEST_20251123_221006_pose1_20251123_221009.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\TEST_20251123_221006\\TEST_20251123_221006_pose2_20251123_221009.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\TEST_20251123_221006\\TEST_20251123_221006_pose3_20251123_221009.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\TEST_20251123_221006\\TEST_20251123_221006_pose4_20251123_221009.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\TEST_20251123_221006\\TEST_20251123_221006_pose5_20251123_221009.jpg"
-    ],
-    "num_poses": 5,
-    "registered_at": "2025-11-23T22:10:09.227321",
-    "processing_status": "completed",
-    "processed_at": "2025-11-23T22:10:57.065580",
-    "num_poses_captured": 5,
-    "num_samples_total": 100,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\TEST_20251123_221006\\embeddings.npy"
-  },
-  "FPALANTU580": {
-    "uuid": "5d7ec2b9-1ebe-4ce1-b563-1affb3c12e15",
-    "student_id": "FPALANTU580",
-    "name": "Alan Turing",
-    "email": "alan.turing@famous.edu",
-    "department": "History",
-    "year": 1,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALANTU580\\FPALANTU580_pose1_20251123_221151.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALANTU580\\FPALANTU580_pose2_20251123_221151.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALANTU580\\FPALANTU580_pose3_20251123_221151.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALANTU580\\FPALANTU580_pose4_20251123_221151.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALANTU580\\FPALANTU580_pose5_20251123_221151.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALANTU580\\FPALANTU580_pose6_20251123_221152.jpg"
-    ],
-    "num_poses": 6,
-    "registered_at": "2025-11-23T22:11:52.055220",
-    "processing_status": "completed",
-    "processed_at": "2025-11-23T22:20:29.139152",
-    "num_poses_captured": 6,
-    "num_samples_total": 120,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\FPALANTU580\\embeddings.npy"
-  },
-  "FPALBERT407": {
-    "uuid": "e7cfae42-d510-421a-b7d0-b8517132debf",
-    "student_id": "FPALBERT407",
-    "name": "Albert Einstein",
-    "email": "albert.einstein@famous.edu",
-    "department": "History",
-    "year": 1,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALBERT407\\FPALBERT407_pose1_20251123_221154.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALBERT407\\FPALBERT407_pose2_20251123_221154.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALBERT407\\FPALBERT407_pose3_20251123_221154.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALBERT407\\FPALBERT407_pose4_20251123_221154.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPALBERT407\\FPALBERT407_pose5_20251123_221154.jpg"
-    ],
-    "num_poses": 5,
-    "registered_at": "2025-11-23T22:11:54.394450",
-    "processing_status": "completed",
-    "processed_at": "2025-11-23T22:19:18.602969",
-    "num_poses_captured": 5,
-    "num_samples_total": 100,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\FPALBERT407\\embeddings.npy"
-  },
-  "FPISAACN286": {
-    "uuid": "90da55bd-0283-40bf-9fd9-a725e7b2aa62",
-    "student_id": "FPISAACN286",
-    "name": "Isaac Newton",
-    "email": "isaac.newton@famous.edu",
-    "department": "History",
-    "year": 1,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPISAACN286\\FPISAACN286_pose1_20251123_221156.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPISAACN286\\FPISAACN286_pose2_20251123_221156.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPISAACN286\\FPISAACN286_pose3_20251123_221156.jpg"
-    ],
-    "num_poses": 3,
-    "registered_at": "2025-11-23T22:11:56.766493",
-    "processing_status": "completed",
-    "processed_at": "2025-11-23T22:16:09.723953",
-    "num_poses_captured": 3,
-    "num_samples_total": 60,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\FPISAACN286\\embeddings.npy"
-  },
-  "FPLIONEL285": {
-    "uuid": "07a08bb8-34bc-462c-b586-c2079ff02317",
-    "student_id": "FPLIONEL285",
-    "name": "Lionel Messi",
-    "email": "lionel.messi@famous.edu",
-    "department": "History",
-    "year": 1,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPLIONEL285\\FPLIONEL285_pose1_20251123_221159.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPLIONEL285\\FPLIONEL285_pose2_20251123_221159.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPLIONEL285\\FPLIONEL285_pose3_20251123_221159.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPLIONEL285\\FPLIONEL285_pose4_20251123_221159.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPLIONEL285\\FPLIONEL285_pose5_20251123_221159.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPLIONEL285\\FPLIONEL285_pose6_20251123_221159.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPLIONEL285\\FPLIONEL285_pose7_20251123_221159.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPLIONEL285\\FPLIONEL285_pose8_20251123_221159.jpg"
-    ],
-    "num_poses": 8,
-    "registered_at": "2025-11-23T22:11:59.546005",
-    "processing_status": "completed",
-    "processed_at": "2025-11-23T22:20:29.280099",
-    "num_poses_captured": 8,
-    "num_samples_total": 140,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\FPLIONEL285\\embeddings.npy"
-  },
-  "FPMAHMOU123": {
-    "uuid": "f7924ab1-dcdd-463c-924f-2a888b18efb6",
-    "student_id": "FPMAHMOU123",
-    "name": "Mahmoud Darwish",
-    "email": "mahmoud.darwish@famous.edu",
-    "department": "History",
-    "year": 1,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMAHMOU123\\FPMAHMOU123_pose1_20251123_221202.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMAHMOU123\\FPMAHMOU123_pose2_20251123_221202.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMAHMOU123\\FPMAHMOU123_pose3_20251123_221202.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMAHMOU123\\FPMAHMOU123_pose4_20251123_221202.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMAHMOU123\\FPMAHMOU123_pose5_20251123_221202.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMAHMOU123\\FPMAHMOU123_pose6_20251123_221202.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMAHMOU123\\FPMAHMOU123_pose7_20251123_221202.jpg"
-    ],
-    "num_poses": 7,
-    "registered_at": "2025-11-23T22:12:02.161585",
-    "processing_status": "pending"
-  },
-  "FPHAYAOM873": {
-    "uuid": "1115d3c8-bb8e-4e8f-b606-356fd0bfb060",
-    "student_id": "FPHAYAOM873",
-    "name": "Hayao Miyazaki",
-    "email": "hayao.miyazaki@famous.edu",
-    "department": "History",
-    "year": 1,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPHAYAOM873\\FPHAYAOM873_pose1_20251123_221204.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPHAYAOM873\\FPHAYAOM873_pose2_20251123_221204.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPHAYAOM873\\FPHAYAOM873_pose3_20251123_221204.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPHAYAOM873\\FPHAYAOM873_pose4_20251123_221204.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPHAYAOM873\\FPHAYAOM873_pose5_20251123_221204.jpg"
-    ],
-    "num_poses": 5,
-    "registered_at": "2025-11-23T22:12:04.688260",
-    "processing_status": "completed",
-    "processed_at": "2025-11-23T22:17:58.470883",
-    "num_poses_captured": 5,
-    "num_samples_total": 100,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\FPHAYAOM873\\embeddings.npy"
-  },
-  "FPMOUSAT551": {
-    "uuid": "9688bcfa-019c-40c9-bb65-78694bf3acce",
-    "student_id": "FPMOUSAT551",
-    "name": "Mousa Tameri",
-    "email": "mousa.tameri@famous.edu",
-    "department": "History",
-    "year": 1,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMOUSAT551\\FPMOUSAT551_pose1_20251123_221207.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMOUSAT551\\FPMOUSAT551_pose2_20251123_221207.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMOUSAT551\\FPMOUSAT551_pose3_20251123_221207.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMOUSAT551\\FPMOUSAT551_pose4_20251123_221207.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMOUSAT551\\FPMOUSAT551_pose5_20251123_221207.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPMOUSAT551\\FPMOUSAT551_pose6_20251123_221207.jpg"
-    ],
-    "num_poses": 6,
-    "registered_at": "2025-11-23T22:12:07.454993",
-    "processing_status": "completed",
-    "processed_at": "2025-11-23T22:20:28.532336",
-    "num_poses_captured": 6,
-    "num_samples_total": 120,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\FPMOUSAT551\\embeddings.npy"
-  },
-  "FPNELSON772": {
-    "uuid": "91b11eff-5038-4470-a02d-9c197f1b8ec6",
-    "student_id": "FPNELSON772",
-    "name": "Nelson Mandela",
-    "email": "nelson.mandela@famous.edu",
-    "department": "History",
-    "year": 1,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPNELSON772\\FPNELSON772_pose1_20251123_221209.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPNELSON772\\FPNELSON772_pose2_20251123_221209.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPNELSON772\\FPNELSON772_pose3_20251123_221209.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPNELSON772\\FPNELSON772_pose4_20251123_221209.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPNELSON772\\FPNELSON772_pose5_20251123_221209.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPNELSON772\\FPNELSON772_pose6_20251123_221209.jpg"
-    ],
-    "num_poses": 6,
-    "registered_at": "2025-11-23T22:12:09.996891",
-    "processing_status": "completed",
-    "processed_at": "2025-11-23T22:20:29.226920",
-    "num_poses_captured": 6,
-    "num_samples_total": 120,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\FPNELSON772\\embeddings.npy"
-  },
-  "FPSHAHRU558": {
-    "uuid": "24d0e324-4848-4e11-8e2c-b03bd22d0e86",
-    "student_id": "FPSHAHRU558",
-    "name": "Shah Rukh Khan",
-    "email": "shah.rukh.khan@famous.edu",
-    "department": "History",
-    "year": 1,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPSHAHRU558\\FPSHAHRU558_pose1_20251123_221212.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPSHAHRU558\\FPSHAHRU558_pose2_20251123_221212.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPSHAHRU558\\FPSHAHRU558_pose3_20251123_221212.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\FPSHAHRU558\\FPSHAHRU558_pose4_20251123_221212.jpg"
-    ],
-    "num_poses": 4,
-    "registered_at": "2025-11-23T22:12:12.543445",
-    "processing_status": "completed",
-    "processed_at": "2025-11-23T22:18:09.057277",
-    "num_poses_captured": 4,
-    "num_samples_total": 80,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\FPSHAHRU558\\embeddings.npy"
-  },
-  "100023423": {
-    "uuid": "defd7c1d-ff39-4431-8957-c959faaffb73",
-    "student_id": "100023423",
-    "name": "sdfgsdf sdfsdf",
-    "email": "100023423@ku.ac.ae",
-    "department": "Artificial Intelligence",
-    "year": 0,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100023423\\100023423_pose1_20251125_171146.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100023423\\100023423_pose2_20251125_171146.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100023423\\100023423_pose3_20251125_171146.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100023423\\100023423_pose4_20251125_171146.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100023423\\100023423_pose5_20251125_171146.jpg"
-    ],
-    "num_poses": 5,
-    "registered_at": "2025-11-25T17:11:46.558940",
-    "processing_status": "completed",
-    "processed_at": "2025-11-25T17:13:01.421019",
-    "num_poses_captured": 5,
-    "num_samples_total": 100,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\100023423\\embeddings.npy"
-  },
-  "100064692": {
-    "uuid": "c6ed424f-7343-41b9-b887-8e8a2c661b15",
-    "student_id": "100064692",
-    "name": "Abd Alrahman Ismaik",
-    "email": "100064692@ku.ac.ae",
-    "department": "Computer Science",
-    "year": 0,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100064692\\100064692_pose1_20251125_180402.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100064692\\100064692_pose2_20251125_180403.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100064692\\100064692_pose3_20251125_180403.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100064692\\100064692_pose4_20251125_180403.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100064692\\100064692_pose5_20251125_180403.jpg"
-    ],
-    "num_poses": 5,
-    "registered_at": "2025-11-25T18:04:03.122650",
-    "processing_status": "completed",
-    "processed_at": "2025-11-25T18:04:44.783271",
-    "num_poses_captured": 5,
-    "num_samples_total": 100,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\100064692\\embeddings.npy"
-  },
-  "100061486": {
-    "uuid": "8ae6ac51-804e-4073-b23f-22fb5f8df64e",
-    "student_id": "100061486",
-    "name": "Kareem Ahmed",
-    "email": "100061486@ku.ac.ae",
-    "department": "Petroleum Engineering",
-    "year": 0,
-    "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100061486\\100061486_pose1_20251125_182620.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100061486\\100061486_pose2_20251125_182620.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100061486\\100061486_pose3_20251125_182620.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100061486\\100061486_pose4_20251125_182620.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100061486\\100061486_pose5_20251125_182620.jpg"
-    ],
-    "num_poses": 5,
-    "registered_at": "2025-11-25T18:26:20.592313",
-    "processing_status": "completed",
-    "processed_at": "2025-11-25T18:27:01.599320",
-    "num_poses_captured": 5,
-    "num_samples_total": 100,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\100061486\\embeddings.npy"
-  },
   "100060000": {
     "uuid": "15e538ee-d828-4a3d-874b-a18410faa1a3",
     "student_id": "100060000",
@@ -303,5 +16,42 @@
     "num_poses_captured": 1,
     "num_samples_total": 20,
     "embeddings_path": "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/processed_faces/100060000/embeddings.npy"
+  },
+  "100064683": {
+    "uuid": "c740dce8-9c18-4f7e-8c03-4e096c979e56",
+    "student_id": "100064683",
+    "name": "Abd Alrahman",
+    "email": "",
+    "department": "",
+    "year": null,
+    "image_paths": [
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064683/100064683_pose1_20251126_120553.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064683/100064683_pose2_20251126_120553.jpg"
+    ],
+    "num_poses": 2,
+    "registered_at": "2025-11-26T12:05:53.231304",
+    "processing_status": "completed",
+    "processed_at": "2025-11-26T12:06:20.764722",
+    "num_poses_captured": 2,
+    "num_samples_total": 40,
+    "embeddings_path": "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/processed_faces/100064683/embeddings.npy"
+  },
+  "100064000": {
+    "uuid": "25d8f015-e4c8-4f12-919e-7b68c56bd819",
+    "student_id": "100064000",
+    "name": "Alan",
+    "email": "",
+    "department": "",
+    "year": null,
+    "image_paths": [
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064000/100064000_pose1_20251126_121254.jpg"
+    ],
+    "num_poses": 1,
+    "registered_at": "2025-11-26T12:12:54.954032",
+    "processing_status": "completed",
+    "processed_at": "2025-11-26T12:13:00.550511",
+    "num_poses_captured": 1,
+    "num_samples_total": 20,
+    "embeddings_path": "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/processed_faces/100064000/embeddings.npy"
   }
 }
