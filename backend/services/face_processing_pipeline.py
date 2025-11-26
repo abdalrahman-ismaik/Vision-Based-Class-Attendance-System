@@ -323,23 +323,34 @@ class FaceClassifier:
             student_mask = binary_labels == 1
             student_embeddings = embeddings[student_mask]
             
-            # For augmented data: if we have exactly 100 embeddings (5 images * 20 augmentations)
-            # Take every 20th embedding (the original non-augmented ones)
+            # For augmented data: detect pattern and extract originals
+            # Augmentation generates batches where first is original, rest are variations
             n_student_embeddings = len(student_embeddings)
-            if n_student_embeddings % 20 == 0:
-                # We have augmented data, extract originals
-                num_originals = n_student_embeddings // 20
-                original_indices = [i * 20 for i in range(num_originals)]
-                original_embeddings = student_embeddings[original_indices]
-                logger.info(f"    Using {len(original_embeddings)} original embeddings for mean (from {n_student_embeddings} total)")
-            else:
-                # No augmentation or different ratio, use all
+            
+            # Try multiple augmentation ratios (20, 10, 5 augmentations per original)
+            original_embeddings = None
+            for aug_ratio in [20, 10, 5]:
+                if n_student_embeddings % (aug_ratio + 1) == 0:
+                    # Pattern detected: every (aug_ratio+1)th embedding is original
+                    num_originals = n_student_embeddings // (aug_ratio + 1)
+                    original_indices = [i * (aug_ratio + 1) for i in range(num_originals)]
+                    original_embeddings = student_embeddings[original_indices]
+                    logger.info(f"    Detected {aug_ratio} augmentations/image: Using {len(original_embeddings)} original embeddings (from {n_student_embeddings} total)")
+                    break
+            
+            if original_embeddings is None:
+                # No clear pattern, use all embeddings (may include augmented data)
                 original_embeddings = student_embeddings
-                logger.info(f"    Using all {len(original_embeddings)} embeddings for mean")
+                logger.warning(f"    No augmentation pattern detected, using all {len(original_embeddings)} embeddings for mean (may affect quality)")
             
             # Calculate and normalize mean embedding
             self.mean_embeddings[student_id] = np.mean(original_embeddings, axis=0)
             self.mean_embeddings[student_id] /= np.linalg.norm(self.mean_embeddings[student_id])
+            
+            # Validate mean embedding quality
+            mean_norm = np.linalg.norm(self.mean_embeddings[student_id])
+            if abs(mean_norm - 1.0) > 0.01:
+                logger.warning(f"    ⚠️ Mean embedding norm ({mean_norm:.6f}) not properly normalized!")
             
             # Count positive and negative samples
             n_positive = np.sum(binary_labels == 1)
@@ -445,6 +456,42 @@ class FaceClassifier:
         metrics['average_test_f1'] = float(avg_test_f1)
         
         logger.info(f"Training complete: avg_test_acc={avg_test_acc:.3f}, avg_f1={avg_test_f1:.3f}")
+        
+        # QUALITY CHECK: Validate student separation
+        logger.info("\n" + "="*60)
+        logger.info("STUDENT SEPARATION ANALYSIS")
+        logger.info("="*60)
+        
+        low_margin_pairs = []
+        for i, sid1 in enumerate(unique_labels):
+            for j, sid2 in enumerate(unique_labels):
+                if i >= j:
+                    continue
+                if sid1 in self.mean_embeddings and sid2 in self.mean_embeddings:
+                    emb1 = self.mean_embeddings[sid1]
+                    emb2 = self.mean_embeddings[sid2]
+                    cosine_sim = np.dot(emb1, emb2)
+                    margin = 1.0 - cosine_sim
+                    
+                    if margin < 0.05:
+                        low_margin_pairs.append((sid1, sid2, cosine_sim, margin))
+                        logger.warning(f"⚠️  {sid1} <-> {sid2}: Similarity={cosine_sim:.4f}, Margin={margin:.4f} (< 0.05)")
+        
+        if low_margin_pairs:
+            logger.warning(f"\n⚠️  WARNING: Found {len(low_margin_pairs)} student pairs with low separation (margin < 0.05)")
+            logger.warning("   These students may be confused during recognition!")
+            logger.warning("   RECOMMENDATION: Re-register these students with more diverse images:")
+            logger.warning("   - 7-10 different poses per student")
+            logger.warning("   - Vary angles (front, 45° left/right, profile)")
+            logger.warning("   - Vary lighting (bright, normal, dim)")
+            logger.warning("   - Vary expressions (neutral, smile)")
+            metrics['low_margin_pairs'] = [(s1, s2, float(sim), float(m)) for s1, s2, sim, m in low_margin_pairs]
+        else:
+            logger.info("✓ All students well-separated (all margins >= 0.05)")
+            metrics['low_margin_pairs'] = []
+        
+        logger.info("="*60 + "\n")
+        
         return metrics
     
     def predict(self, embedding, threshold=0.5, allowed_student_ids=None):
@@ -535,8 +582,8 @@ class FaceClassifier:
         
         # Use cosine similarity as fallback if SVM confidence is low but cosine similarity is high
         # Typical good cosine similarity threshold is 0.5-0.6 (higher = more strict)
-        COSINE_THRESHOLD = 0.60
-        MIN_MARGIN = 0.03  # Minimum difference between best and second-best match (lowered from 0.05)
+        COSINE_THRESHOLD = 0.65  # Increased from 0.60 for stricter matching
+        MIN_MARGIN = 0.05  # Minimum difference between best and second-best match (5% difference required)
         
         # Check margin: best match should be significantly better than second-best
         if len(cosine_similarities) >= 2:
@@ -1103,9 +1150,20 @@ class FaceProcessingPipeline:
         image = image.convert('RGB')
         logger.info(f"  Image converted to RGB: size={image.size}")
         
+        # CRITICAL FIX: Resize to 112x112 to match training preprocessing
+        # Training pipeline resizes all faces to 112x112, so real-time must match
+        original_size = image.size
+        image = image.resize((112, 112), Image.LANCZOS)
+        logger.info(f"  Resized from {original_size} to {image.size} for consistency with training")
+        
         # Generate embedding directly (skip face detection since already cropped)
         logger.info(f"  Generating face embedding from crop...")
         embedding = self.embedding_generator.generate_embedding(image)
+        
+        # Check embedding quality
+        embedding_norm = np.linalg.norm(embedding)
+        if abs(embedding_norm - 1.0) > 0.1:
+            logger.warning(f"  ⚠️ Embedding norm ({embedding_norm:.4f}) deviates from 1.0 - may be low quality face crop")
         logger.info(f"  Embedding generated: shape={embedding.shape}, dtype={embedding.dtype}")
         logger.info(f"  Embedding stats: min={embedding.min():.4f}, max={embedding.max():.4f}, mean={embedding.mean():.4f}")
         

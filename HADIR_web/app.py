@@ -212,12 +212,12 @@ def create_app(video_source: str) -> Flask:
                 
                 # Recognize using pipeline (using crop method to skip redundant face detection)
                 logger.info(f"[Face {face_id}] Running recognition pipeline...")
-                logger.info(f"[Face {face_id}]   - Threshold: 0.6")
+                logger.info(f"[Face {face_id}]   - Threshold: 0.65 (increased for stricter matching)")
                 logger.info(f"[Face {face_id}]   - Allowed students: {enrolled_ids}")
                 
                 result = pipeline.recognize_face_from_crop(
                     face_crop_path=temp_path,
-                    threshold=0.6,
+                    threshold=0.65,  # Increased from 0.6 to match COSINE_THRESHOLD
                     allowed_student_ids=enrolled_ids
                 )
                 
@@ -296,15 +296,16 @@ def create_app(video_source: str) -> Flask:
                                 logger.info(f"[Face {face_id}] Voting results: {vote_counts}")
                                 logger.info(f"[Face {face_id}] Winner: {winner} with {winner_votes} votes, avg cosine: {avg_cosine:.4f}")
                                 
-                                # Check if winner has clear majority (> 50%)
-                                if winner_votes > MAX_VERIFICATION_ATTEMPTS / 2 and avg_cosine >= 0.60:
+                                # Check if winner has clear majority (> 50%) and meets threshold
+                                # Using stricter 0.65 threshold to match updated COSINE_THRESHOLD
+                                if winner_votes > MAX_VERIFICATION_ATTEMPTS / 2 and avg_cosine >= 0.65:
                                     label = winner
                                     confidence = avg_cosine
-                                    logger.info(f"[Face {face_id}] Verified by majority voting")
+                                    logger.info(f"[Face {face_id}] ✓ Verified by majority voting (threshold: 0.65)")
                                 else:
                                     label = 'Unknown'
                                     confidence = avg_cosine
-                                    logger.warning(f"[Face {face_id}] No clear majority, marking as Unknown")
+                                    logger.warning(f"[Face {face_id}] ✗ No clear majority or avg_cosine {avg_cosine:.4f} < 0.65, marking as Unknown")
                             else:
                                 label = 'Unknown'
                                 confidence = 0.0

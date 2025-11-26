@@ -84,3 +84,4 @@ processed_faces/*
 logs/
 
 HADIR_web/debug_faces
+backend/storage/uploads
