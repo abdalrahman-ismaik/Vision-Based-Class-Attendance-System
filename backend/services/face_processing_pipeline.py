@@ -30,6 +30,64 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# ============= QUALITY CHECK UTILITIES =============
+class FaceQualityChecker:
+    """Check face quality to filter out low-quality detections"""
+    
+    @staticmethod
+    def check_image_blur(image, threshold=50):
+        """
+        Check if image is blurry using Laplacian variance
+        Lower values = more blur
+        
+        Args:
+            image: PIL Image or numpy array
+            threshold: Minimum variance threshold (default 50, lowered for less strict checking)
+        
+        Returns:
+            tuple: (is_sharp: bool, message: str)
+        """
+        if isinstance(image, Image.Image):
+            image = np.array(image)
+        
+        # Convert to grayscale if needed
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        else:
+            gray = image
+        
+        # Calculate Laplacian variance
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        
+        if laplacian_var < threshold:
+            return False, f"Image too blurry: {laplacian_var:.2f}"
+        return True, f"Sharpness OK: {laplacian_var:.2f}"
+    
+    @staticmethod
+    def check_brightness_consistency(image, min_mean=20, max_mean=240):
+        """
+        Check if image has reasonable brightness
+        
+        Args:
+            image: PIL Image or numpy array
+            min_mean: Minimum acceptable mean brightness (default 20, lowered for darker images)
+            max_mean: Maximum acceptable mean brightness (default 240, raised for brighter images)
+        
+        Returns:
+            tuple: (is_ok: bool, message: str)
+        """
+        if isinstance(image, Image.Image):
+            image = np.array(image)
+        
+        mean_brightness = np.mean(image)
+        
+        if mean_brightness < min_mean:
+            return False, f"Image too dark: {mean_brightness:.2f}"
+        if mean_brightness > max_mean:
+            return False, f"Image too bright: {mean_brightness:.2f}"
+        return True, f"Brightness OK: {mean_brightness:.2f}"
+
+
 # ============= CONSTANTS =============
 FACENET_MEAN = [0.31928780674934387, 0.2873991131782532, 0.25779902935028076]
 FACENET_STD = [0.19799138605594635, 0.20757903158664703, 0.21088403463363647]
@@ -40,7 +98,7 @@ DEFAULT_CHECKPOINT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 's
 class FaceDetector:
     """Face detector using RetinaFace"""
     
-    def __init__(self, threshold=0.8):
+    def __init__(self, threshold=0.9):
         """Initialize face detector"""
         try:
             # Try importing from FaceNet utils
@@ -49,8 +107,14 @@ class FaceDetector:
             self.detector = RetinaFacePyPIAdapter(threshold=threshold)
             logger.info(f"✓ Face detector initialized with threshold={threshold}")
         except Exception as e:
-            logger.error(f"Failed to initialize face detector: {e}")
-            raise
+            try:
+                # Fallback: Try importing directly if FaceNet is in PYTHONPATH
+                from utils.utils import RetinaFacePyPIAdapter
+                self.detector = RetinaFacePyPIAdapter(threshold=threshold)
+                logger.info(f"✓ Face detector initialized with threshold={threshold}")
+            except Exception as e:
+                logger.error(f"Failed to initialize face detector: {e}")
+                raise
     
     def detect_faces(self, image):
         """
@@ -283,7 +347,6 @@ class FaceClassifier:
         self.classifiers = {}  # Dict of {student_id: classifier}
         self.student_ids = []
         self.is_trained = False
-        self.mean_embeddings = {}  # Store mean embeddings for cosine similarity fallback
     
     def train(self, embeddings, labels):
         """
@@ -317,48 +380,13 @@ class FaceClassifier:
             # Create binary labels: 1 for this student, 0 for others
             binary_labels = (labels == student_id).astype(int)
             
-            # Store mean embedding for this student (for cosine similarity fallback)
-            # CRITICAL FIX: Calculate mean ONLY from original embeddings (first one per augmentation batch)
-            # Assuming augmentations are generated in batches, use only first embedding of each batch
-            student_mask = binary_labels == 1
-            student_embeddings = embeddings[student_mask]
-            
-            # For augmented data: detect pattern and extract originals
-            # Augmentation generates batches where first is original, rest are variations
-            n_student_embeddings = len(student_embeddings)
-            
-            # Try multiple augmentation ratios (20, 10, 5 augmentations per original)
-            original_embeddings = None
-            for aug_ratio in [20, 10, 5]:
-                if n_student_embeddings % (aug_ratio + 1) == 0:
-                    # Pattern detected: every (aug_ratio+1)th embedding is original
-                    num_originals = n_student_embeddings // (aug_ratio + 1)
-                    original_indices = [i * (aug_ratio + 1) for i in range(num_originals)]
-                    original_embeddings = student_embeddings[original_indices]
-                    logger.info(f"    Detected {aug_ratio} augmentations/image: Using {len(original_embeddings)} original embeddings (from {n_student_embeddings} total)")
-                    break
-            
-            if original_embeddings is None:
-                # No clear pattern, use all embeddings (may include augmented data)
-                original_embeddings = student_embeddings
-                logger.warning(f"    No augmentation pattern detected, using all {len(original_embeddings)} embeddings for mean (may affect quality)")
-            
-            # Calculate and normalize mean embedding
-            self.mean_embeddings[student_id] = np.mean(original_embeddings, axis=0)
-            self.mean_embeddings[student_id] /= np.linalg.norm(self.mean_embeddings[student_id])
-            
-            # Validate mean embedding quality
-            mean_norm = np.linalg.norm(self.mean_embeddings[student_id])
-            if abs(mean_norm - 1.0) > 0.01:
-                logger.warning(f"    ⚠️ Mean embedding norm ({mean_norm:.6f}) not properly normalized!")
-            
             # Count positive and negative samples
             n_positive = np.sum(binary_labels == 1)
             n_negative = np.sum(binary_labels == 0)
             
             logger.info(f"    Positive samples: {n_positive}, Negative samples: {n_negative}")
             
-            # CRITICAL FIX: Balance the dataset by undersampling negatives
+            # CRITICAL FIX: Balance the dataset by undersampling negatives (FROM REFERENCE)
             # Too many negatives causes SVM probability calibration issues
             MAX_NEGATIVE_RATIO = 5  # At most 5x negative samples compared to positive
             
@@ -402,14 +430,13 @@ class FaceClassifier:
                 stratify=labels_balanced  # Maintain class balance in splits
             )
             
-            # Train binary SVM classifier with class weights
-            # IMPROVEMENT: Increase C for better margin and use RBF kernel for non-linear boundaries
+            # Train binary SVM classifier with class weights (FROM REFERENCE)
+            # Use linear kernel and C=1.0 as per reference implementation
             classifier = SVC(
-                kernel='rbf',  # RBF kernel can capture non-linear patterns better
+                kernel='linear', 
                 probability=True, 
-                C=10.0,  # Higher C for stricter classification
-                gamma='scale',  # Automatic gamma scaling
-                class_weight=class_weights
+                C=1.0,
+                class_weight=class_weights  # Handle imbalance
             )
             classifier.fit(X_train, y_train)
             
@@ -457,50 +484,17 @@ class FaceClassifier:
         
         logger.info(f"Training complete: avg_test_acc={avg_test_acc:.3f}, avg_f1={avg_test_f1:.3f}")
         
-        # QUALITY CHECK: Validate student separation
-        logger.info("\n" + "="*60)
-        logger.info("STUDENT SEPARATION ANALYSIS")
-        logger.info("="*60)
-        
-        low_margin_pairs = []
-        for i, sid1 in enumerate(unique_labels):
-            for j, sid2 in enumerate(unique_labels):
-                if i >= j:
-                    continue
-                if sid1 in self.mean_embeddings and sid2 in self.mean_embeddings:
-                    emb1 = self.mean_embeddings[sid1]
-                    emb2 = self.mean_embeddings[sid2]
-                    cosine_sim = np.dot(emb1, emb2)
-                    margin = 1.0 - cosine_sim
-                    
-                    if margin < 0.05:
-                        low_margin_pairs.append((sid1, sid2, cosine_sim, margin))
-                        logger.warning(f"⚠️  {sid1} <-> {sid2}: Similarity={cosine_sim:.4f}, Margin={margin:.4f} (< 0.05)")
-        
-        if low_margin_pairs:
-            logger.warning(f"\n⚠️  WARNING: Found {len(low_margin_pairs)} student pairs with low separation (margin < 0.05)")
-            logger.warning("   These students may be confused during recognition!")
-            logger.warning("   RECOMMENDATION: Re-register these students with more diverse images:")
-            logger.warning("   - 7-10 different poses per student")
-            logger.warning("   - Vary angles (front, 45° left/right, profile)")
-            logger.warning("   - Vary lighting (bright, normal, dim)")
-            logger.warning("   - Vary expressions (neutral, smile)")
-            metrics['low_margin_pairs'] = [(s1, s2, float(sim), float(m)) for s1, s2, sim, m in low_margin_pairs]
-        else:
-            logger.info("✓ All students well-separated (all margins >= 0.05)")
-            metrics['low_margin_pairs'] = []
-        
-        logger.info("="*60 + "\n")
-        
         return metrics
     
     def predict(self, embedding, threshold=0.5, allowed_student_ids=None):
         """
         Predict using all binary classifiers and return best match
+        Enhanced with confidence margin requirement
         
         Args:
             embedding: numpy array of shape (embedding_dim,)
             threshold: Minimum probability threshold for positive prediction
+            allowed_student_ids: Optional list of student IDs to restrict prediction to
         
         Returns:
             dict with prediction results
@@ -508,59 +502,29 @@ class FaceClassifier:
         if not self.is_trained:
             raise ValueError("Classifiers not trained yet!")
         
-        logger.info(f"  [Classifier] Starting prediction...")
-        logger.info(f"  [Classifier]   Embedding shape: {embedding.shape}")
-        logger.info(f"  [Classifier]   Threshold: {threshold}")
-        logger.info(f"  [Classifier]   Allowed students: {allowed_student_ids}")
-        logger.info(f"  [Classifier]   Total trained classifiers: {len(self.classifiers)}")
-        
         embedding = embedding.reshape(1, -1)
         
         # Determine which classifiers to consult
         if allowed_student_ids is None:
             iter_classifiers = self.classifiers.items()
-            logger.info(f"  [Classifier]   Using all {len(self.classifiers)} classifiers")
         else:
             # Filter to allowed students and ignore missing ones
-            iter_classifiers = [
+            iter_classifiers = (
                 (sid, self.classifiers[sid])
                 for sid in allowed_student_ids if sid in self.classifiers
-            ]
-            logger.info(f"  [Classifier]   Using {len(iter_classifiers)} classifiers (from {len(allowed_student_ids)} allowed)")
-            missing = [sid for sid in allowed_student_ids if sid not in self.classifiers]
-            if missing:
-                logger.warning(f"  [Classifier]   Missing classifiers for: {missing}")
+            )
 
         # Get predictions from the selected classifiers
         predictions = {}
-        decision_scores = {}  # Store decision function values for debugging
-        cosine_similarities = {}  # Store cosine similarities for comparison
-        
         for student_id, classifier in iter_classifiers:
-            # Get decision function value (distance from hyperplane)
-            decision_value = classifier.decision_function(embedding)[0]
-            decision_scores[student_id] = float(decision_value)
-            
             # Predict probability for positive class (this student)
             proba = classifier.predict_proba(embedding)[0]
             positive_proba = proba[1] if len(proba) > 1 else proba[0]
 
             predictions[student_id] = float(positive_proba)
-            
-            # Also calculate cosine similarity with mean embedding
-            if student_id in self.mean_embeddings:
-                cosine_sim = np.dot(embedding.flatten(), self.mean_embeddings[student_id])
-                cosine_similarities[student_id] = float(cosine_sim)
-            
-            logger.debug(f"  [Classifier]     {student_id}: prob={positive_proba:.4f}, decision={decision_value:.4f}, cosine={cosine_similarities.get(student_id, 0):.4f}")
-        
-        logger.info(f"  [Classifier]   Got predictions for {len(predictions)} students")
-        logger.info(f"  [Classifier]   Decision function values: {decision_scores}")
-        logger.info(f"  [Classifier]   Cosine similarities: {cosine_similarities}")
         
         if len(predictions) == 0:
             # No classifiers available in the allowed set
-            logger.warning(f"  [Classifier] ✗ No classifiers available")
             return {
                 'label': 'Unknown',
                 'confidence': 0.0,
@@ -569,90 +533,50 @@ class FaceClassifier:
             }
 
         # Find student with highest confidence
-        best_student_svm = max(predictions, key=predictions.get)
-        best_confidence_svm = predictions[best_student_svm]
+        best_student = max(predictions, key=predictions.get)
+        best_confidence = predictions[best_student]
         
-        # Also check cosine similarity
-        best_student_cosine = max(cosine_similarities, key=cosine_similarities.get) if cosine_similarities else None
-        best_similarity = cosine_similarities.get(best_student_cosine, 0) if best_student_cosine else 0
+        # Get second best for confidence margin check
+        sorted_predictions = sorted(predictions.items(), key=lambda x: x[1], reverse=True)
+        second_best_confidence = sorted_predictions[1][1] if len(sorted_predictions) > 1 else 0.0
         
-        logger.info(f"  [Classifier]   Best SVM match: {best_student_svm} with confidence {best_confidence_svm:.4f}")
-        if best_student_cosine:
-            logger.info(f"  [Classifier]   Best cosine match: {best_student_cosine} with similarity {best_similarity:.4f}")
+        # Calculate confidence margin
+        confidence_margin = best_confidence - second_best_confidence
         
-        # Use cosine similarity as fallback if SVM confidence is low but cosine similarity is high
-        # Typical good cosine similarity threshold is 0.5-0.6 (higher = more strict)
-        COSINE_THRESHOLD = 0.65  # Increased from 0.60 for stricter matching
-        MIN_MARGIN = 0.05  # Minimum difference between best and second-best match (5% difference required)
+        # ENHANCED DECISION LOGIC:
+        # 1. Must exceed threshold
+        # 2. Must have sufficient margin over second-best
+        MIN_CONFIDENCE_MARGIN = 0.075  # At least 15% better than second-best
         
-        # Check margin: best match should be significantly better than second-best
-        if len(cosine_similarities) >= 2:
-            sorted_sims = sorted(cosine_similarities.items(), key=lambda x: x[1], reverse=True)
-            best_sim_value = sorted_sims[0][1]
-            second_best_sim_value = sorted_sims[1][1]
-            margin = best_sim_value - second_best_sim_value
-            logger.info(f"  [Classifier]   Cosine similarity margin: {margin:.4f} (best: {best_sim_value:.4f}, second: {second_best_sim_value:.4f})")
-        else:
-            margin = 1.0  # Only one student, no ambiguity
-        
-        # NEW LOGIC: Use SVM result first, confirm with cosine similarity
-        # Get cosine similarity for the best SVM prediction
-        svm_student_cosine = cosine_similarities.get(best_student_svm, 0.0)
-        logger.info(f"  [Classifier]   Best SVM student ({best_student_svm}) cosine similarity: {svm_student_cosine:.4f}")
-        
-        # 1. Check if SVM prediction is confirmed by cosine similarity
-        if svm_student_cosine >= COSINE_THRESHOLD and margin >= MIN_MARGIN:
-            # SVM prediction has good cosine similarity and margin - ACCEPT
-            logger.info(f"  [Classifier] ✓ SVM prediction confirmed by cosine (SVM conf={best_confidence_svm:.4f}, cosine={svm_student_cosine:.4f} >= {COSINE_THRESHOLD}, margin={margin:.4f})")
-            return {
-                'label': best_student_svm,
-                'confidence': svm_student_cosine,  # Use cosine as confidence
-                'all_predictions': predictions,
-                'cosine_similarities': cosine_similarities,
-                'method': 'svm_confirmed_by_cosine',
-                'svm_confidence': best_confidence_svm,
-                'margin': margin,
-                'threshold_used': COSINE_THRESHOLD
-            }
-        elif svm_student_cosine >= COSINE_THRESHOLD and margin < MIN_MARGIN:
-            # SVM prediction has good cosine but margin too small - AMBIGUOUS
-            logger.warning(f"  [Classifier] ✗ Cosine similarity margin too small ({margin:.4f} < {MIN_MARGIN}), ambiguous match")
+        # Check if confidence exceeds threshold
+        if best_confidence < threshold:
             return {
                 'label': 'Unknown',
-                'confidence': svm_student_cosine,
+                'confidence': best_confidence,
                 'all_predictions': predictions,
-                'cosine_similarities': cosine_similarities,
-                'reason': 'ambiguous_match',
-                'margin': margin,
-                'threshold_used': COSINE_THRESHOLD
+                'threshold_used': threshold,
+                'confidence_margin': confidence_margin,
+                'reason': f'Below threshold ({best_confidence:.3f} < {threshold})'
             }
-        else:
-            # SVM prediction NOT confirmed by cosine - check if best cosine match is different
-            logger.warning(f"  [Classifier] ✗ SVM prediction ({best_student_svm}) cosine {svm_student_cosine:.4f} below threshold {COSINE_THRESHOLD}")
-            
-            if best_student_cosine != best_student_svm and best_similarity >= COSINE_THRESHOLD and margin >= MIN_MARGIN:
-                # Best cosine match is different from SVM and meets criteria - use it as fallback
-                logger.info(f"  [Classifier] → Using best cosine match ({best_student_cosine}) as fallback (SVM picked wrong student)")
-                return {
-                    'label': best_student_cosine,
-                    'confidence': best_similarity,
-                    'all_predictions': predictions,
-                    'cosine_similarities': cosine_similarities,
-                    'method': 'cosine_fallback',
-                    'svm_confidence': predictions.get(best_student_cosine, 0.0),
-                    'margin': margin,
-                    'threshold_used': COSINE_THRESHOLD
-                }
-            else:
-                # No student meets criteria - REJECT
-                logger.warning(f"  [Classifier] ✗ No student meets threshold (best SVM cosine={svm_student_cosine:.4f}, best cosine={best_similarity:.4f})")
-                return {
-                    'label': 'Unknown',
-                    'confidence': best_confidence_svm,
-                    'all_predictions': predictions,
-                    'cosine_similarities': cosine_similarities,
-                    'threshold_used': COSINE_THRESHOLD
-                }
+        
+        # Check confidence margin (only if there are 2+ students)
+        if len(predictions) > 1 and confidence_margin < MIN_CONFIDENCE_MARGIN:
+            return {
+                'label': 'Unknown',
+                'confidence': best_confidence,
+                'all_predictions': predictions,
+                'threshold_used': threshold,
+                'confidence_margin': confidence_margin,
+                'reason': f'Insufficient margin ({confidence_margin:.3f} < {MIN_CONFIDENCE_MARGIN})'
+            }
+        
+        return {
+            'label': best_student,
+            'confidence': best_confidence,
+            'all_predictions': predictions,
+            'threshold_used': threshold,
+            'confidence_margin': confidence_margin
+        }
     
     def predict_student(self, embedding, student_id, threshold=0.5):
         """
@@ -699,11 +623,10 @@ class FaceClassifier:
         with open(filepath, 'wb') as f:
             pickle.dump({
                 'classifiers': self.classifiers,
-                'student_ids': self.student_ids,
-                'mean_embeddings': self.mean_embeddings
+                'student_ids': self.student_ids
             }, f)
         
-        logger.info(f"Classifiers saved to {filepath} (with mean embeddings)")
+        logger.info(f"Classifiers saved to {filepath}")
     
     def load(self, filepath):
         """Load classifiers from file"""
@@ -712,15 +635,9 @@ class FaceClassifier:
         
         self.classifiers = data['classifiers']
         self.student_ids = data['student_ids']
-        # Load mean_embeddings if available (for backward compatibility)
-        self.mean_embeddings = data.get('mean_embeddings', {})
         self.is_trained = True
         
         logger.info(f"Loaded {len(self.classifiers)} classifiers from {filepath}")
-        if self.mean_embeddings:
-            logger.info(f"  ✓ Loaded mean embeddings for {len(self.mean_embeddings)} students")
-        else:
-            logger.warning(f"  ⚠ No mean embeddings found - cosine similarity fallback disabled")
 
 
 class FaceProcessingPipeline:
@@ -1121,6 +1038,7 @@ class FaceProcessingPipeline:
     def recognize_face_from_crop(self, face_crop_path, threshold=0.5, allowed_student_ids=None):
         """
         Recognize face from an already-cropped face image (skips face detection)
+        Enhanced with quality filtering
         
         Args:
             face_crop_path: Path to cropped face image
@@ -1150,6 +1068,37 @@ class FaceProcessingPipeline:
         image = image.convert('RGB')
         logger.info(f"  Image converted to RGB: size={image.size}")
         
+        # QUALITY CHECK 1: Check blur
+        quality_checker = FaceQualityChecker()
+        is_sharp, blur_msg = quality_checker.check_image_blur(image, threshold=50)
+        logger.info(f"  Blur check: {blur_msg}")
+        if not is_sharp:
+            logger.warning(f"  ✗ Quality check failed: {blur_msg}")
+            return {
+                'prediction': {
+                    'label': 'Unknown',
+                    'confidence': 0.0,
+                    'all_predictions': {},
+                    'threshold_used': threshold,
+                    'quality_issue': blur_msg
+                }
+            }
+        
+        # QUALITY CHECK 2: Check brightness
+        is_bright_ok, bright_msg = quality_checker.check_brightness_consistency(image, min_mean=20, max_mean=240)
+        logger.info(f"  Brightness check: {bright_msg}")
+        if not is_bright_ok:
+            logger.warning(f"  ✗ Quality check failed: {bright_msg}")
+            return {
+                'prediction': {
+                    'label': 'Unknown',
+                    'confidence': 0.0,
+                    'all_predictions': {},
+                    'threshold_used': threshold,
+                    'quality_issue': bright_msg
+                }
+            }
+        
         # CRITICAL FIX: Resize to 112x112 to match training preprocessing
         # Training pipeline resizes all faces to 112x112, so real-time must match
         original_size = image.size
@@ -1171,6 +1120,13 @@ class FaceProcessingPipeline:
         logger.info(f"  Running classifier prediction...")
         prediction = self.classifier.predict(embedding, threshold=threshold, allowed_student_ids=allowed_student_ids)
         logger.info(f"  Prediction result: {prediction}")
+        
+        # Log confidence margin if available
+        if 'confidence_margin' in prediction:
+            logger.info(f"  Confidence margin: {prediction['confidence_margin']:.3f}")
+        if 'reason' in prediction:
+            logger.info(f"  Rejection reason: {prediction['reason']}")
+        
         logger.info(f"=== Face recognition complete ===")
         
         return {

@@ -1,6 +1,7 @@
 import os
 import uuid
 import logging
+import threading
 from datetime import datetime
 from flask import request
 from flask_restx import Resource, reqparse
@@ -106,22 +107,83 @@ class StudentList(Resource):
             
             logger.info(f"Student registered successfully: {student_id} with {len(saved_paths)} images")
             
-            # Trigger background processing (optional, or return pending status)
-            # For now, we'll just return success and let the user trigger processing or have a background job
+            # Process face in background thread (FROM REFERENCE)
+            def process_face_background():
+                try:
+                    logger.info(f"Background processing started for {student_id}")
+                    
+                    # Reload database to ensure we have latest
+                    db = load_database()
+                    
+                    pipeline = get_pipeline()
+                    if pipeline is None:
+                        logger.error(f"Pipeline not available for {student_id}")
+                        db[student_id]['processing_status'] = 'failed'
+                        db[student_id]['processing_error'] = 'Pipeline initialization failed'
+                        save_database(db)
+                        return
+                    
+                    logger.info(f"Pipeline initialized, starting face processing for {student_id}")
+                    
+                    # Process student images (multiple poses)
+                    result = pipeline.process_student_images(
+                        image_paths=saved_paths,
+                        student_id=student_id,
+                        output_dir=PROCESSED_FACES_FOLDER,
+                        augment_per_image=20
+                    )
+                    
+                    # Reload database again before updating
+                    db = load_database()
+                    
+                    if result:
+                        # Update database with processing results
+                        db[student_id]['processing_status'] = 'completed'
+                        db[student_id]['processed_at'] = datetime.now().isoformat()
+                        db[student_id]['num_poses_captured'] = result['num_poses_captured']
+                        db[student_id]['num_samples_total'] = result['num_samples_total']
+                        db[student_id]['embeddings_path'] = result['embeddings_path']
+                        save_database(db)
+                        logger.info(f"✓ Face processing completed for {student_id}: {result['num_samples_total']} samples from {result['num_poses_captured']} poses")
+                        
+                        # Trigger classifier training
+                        try:
+                            logger.info("Starting classifier training...")
+                            classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'classifier.pkl')
+                            train_result = pipeline.train_classifier_from_data(
+                                data_dir=PROCESSED_FACES_FOLDER,
+                                classifier_output_path=classifier_path
+                            )
+                            logger.info(f"✓ Classifier training completed. Accuracy: {train_result['metrics'].get('average_test_accuracy', 0):.2f}")
+                        except ValueError as ve:
+                            logger.warning(f"Skipping classifier training: {ve}")
+                        except Exception as e:
+                            logger.error(f"Classifier training failed: {e}")
+
+                    else:
+                        db[student_id]['processing_status'] = 'failed'
+                        db[student_id]['processing_error'] = 'No face detected'
+                        save_database(db)
+                        logger.warning(f"✗ Face processing failed for {student_id}: No face detected")
+                    
+                except Exception as e:
+                    logger.error(f"✗ Error processing face for {student_id}: {e}", exc_info=True)
+                    try:
+                        db = load_database()
+                        db[student_id]['processing_status'] = 'failed'
+                        db[student_id]['processing_error'] = str(e)
+                        save_database(db)
+                    except:
+                        pass
             
-            # Try to trigger processing immediately if pipeline is available
-            try:
-                pipeline = get_pipeline()
-                if pipeline:
-                    # We could run this in a thread, but for now let's keep it simple or use the manual trigger
-                    pass
-            except:
-                pass
+            # Start background processing
+            thread = threading.Thread(target=process_face_background, daemon=True)
+            thread.start()
+            logger.info(f"Background thread started for {student_id}")
             
             return {
-                'message': 'Student registered successfully',
-                'student': student_data,
-                'next_steps': 'Face processing will be triggered automatically or can be triggered manually via /api/students/{id}/process'
+                'message': 'Student registered successfully. Face processing started in background.',
+                'student': student_data
             }, 201
             
         except Exception as e:
@@ -229,7 +291,7 @@ class TrainClassifier(Resource):
                 }, 400
             
             # Train classifier
-            classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'face_classifier.pkl')
+            classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'classifier.pkl')
             
             logger.info("Starting classifier training...")
             result = pipeline.train_classifier_from_data(
@@ -342,7 +404,7 @@ class RecognizeFace(Resource):
             # Check if classifier is trained
             if not pipeline.classifier.is_trained:
                 # Try to load if exists
-                classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'face_classifier.pkl')
+                classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'classifier.pkl')
                 if os.path.exists(classifier_path):
                     pipeline.classifier.load(classifier_path)
                 else:
@@ -456,7 +518,7 @@ class VerifyStudentFace(Resource):
             # Check if classifier is trained
             if not pipeline.classifier.is_trained:
                 # Try to load if exists
-                classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'face_classifier.pkl')
+                classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'classifier.pkl')
                 if os.path.exists(classifier_path):
                     pipeline.classifier.load(classifier_path)
                 else:

@@ -3,11 +3,8 @@
 class AttendanceMonitor {
     constructor() {
         this.detections = new Map();
-        this.stats = {
-            totalDetected: 0,
-            registered: 0,
-            unknown: 0
-        };
+        this.sessionActive = false;
+        this.statsInterval = null;
         
         this.init();
     }
@@ -24,27 +21,10 @@ class AttendanceMonitor {
         // Setup event listeners
         this.setupEventListeners();
         
-        // Start FPS counter
-        this.startFPSCounter();
-        
-        // Setup periodic updates
-        setInterval(() => this.updateLastUpdateTime(), 1000);
-        
         console.log('✓ Attendance Monitor ready');
     }
     
     setupEventListeners() {
-        // Fullscreen button
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
-        const videoContainer = document.getElementById('video-container');
-        
-        fullscreenBtn?.addEventListener('click', () => {
-            videoContainer.classList.toggle('fullscreen');
-            fullscreenBtn.textContent = videoContainer.classList.contains('fullscreen') 
-                ? '⛶ Exit Fullscreen' 
-                : '⛶ Fullscreen';
-        });
-        
         // Clear detections button
         const clearBtn = document.getElementById('clear-btn');
         clearBtn?.addEventListener('click', () => {
@@ -95,9 +75,8 @@ class AttendanceMonitor {
         }
 
         const startBtn = document.getElementById('start-class-btn');
-        const originalHTML = startBtn.innerHTML;
         startBtn.disabled = true;
-        startBtn.innerHTML = '<span class="loading"></span><span>Starting...</span>';
+        startBtn.textContent = 'Starting...';
 
         try {
             const response = await fetch('/start_class', {
@@ -108,7 +87,7 @@ class AttendanceMonitor {
             
             const data = await response.json();
             if (response.ok) {
-                this.showVideoSection(classId);
+                this.showMainView(classId);
             } else {
                 alert('Error: ' + data.error);
             }
@@ -117,7 +96,7 @@ class AttendanceMonitor {
             alert('Failed to start class session. Check console for details.');
         } finally {
             startBtn.disabled = false;
-            startBtn.innerHTML = originalHTML;
+            startBtn.textContent = 'Start Session';
         }
     }
 
@@ -130,25 +109,29 @@ class AttendanceMonitor {
         }
     }
 
-    showVideoSection(classId) {
+    showMainView(classId) {
         document.getElementById('setup-section').classList.add('hidden');
-        document.getElementById('video-section').classList.remove('hidden');
-        document.getElementById('stats-section').classList.remove('hidden');
-        document.getElementById('current-class-display').textContent = classId;
+        document.getElementById('main-view').classList.remove('hidden');
+        document.getElementById('class-info').classList.remove('hidden');
+        document.getElementById('stop-class-btn').classList.remove('hidden');
+        document.getElementById('current-class-name').textContent = classId;
         
         // Set video src to start streaming
         const videoFeed = document.getElementById('video-feed');
-        // Add timestamp to prevent caching
         videoFeed.src = "/video_feed?" + new Date().getTime();
         
         document.getElementById('camera-status').classList.add('active');
-        document.getElementById('camera-text').textContent = 'Active';
+        
+        // Start fetching stats
+        this.sessionActive = true;
+        this.startStatsPolling();
     }
 
     showSetupSection() {
         document.getElementById('setup-section').classList.remove('hidden');
-        document.getElementById('video-section').classList.add('hidden');
-        document.getElementById('stats-section').classList.add('hidden');
+        document.getElementById('main-view').classList.add('hidden');
+        document.getElementById('class-info').classList.add('hidden');
+        document.getElementById('stop-class-btn').classList.add('hidden');
         
         // Reset dropdown
         document.getElementById('class-select').value = '';
@@ -158,55 +141,126 @@ class AttendanceMonitor {
         videoFeed.src = "";
         
         document.getElementById('camera-status').classList.remove('active');
-        document.getElementById('camera-text').textContent = 'Inactive';
+        
+        // Stop fetching stats
+        this.sessionActive = false;
+        this.stopStatsPolling();
+    }
+    
+    startStatsPolling() {
+        // Fetch stats every 2 seconds
+        this.statsInterval = setInterval(() => {
+            this.fetchStats();
+            this.fetchDetections();
+        }, 2000);
+        
+        // Fetch immediately
+        this.fetchStats();
+        this.fetchDetections();
+    }
+    
+    stopStatsPolling() {
+        if (this.statsInterval) {
+            clearInterval(this.statsInterval);
+            this.statsInterval = null;
+        }
+    }
+    
+    async fetchStats() {
+        if (!this.sessionActive) return;
+        
+        try {
+            const response = await fetch('/api/stats');
+            const data = await response.json();
+            
+            // Update stats display
+            document.getElementById('session-time').textContent = this.formatTime(data.session_uptime);
+            document.getElementById('total-detections').textContent = data.total_detections;
+            document.getElementById('registered-count').textContent = data.registered_count || 0;
+            document.getElementById('unknown-count').textContent = data.unknown_count;
+            
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        }
+    }
+    
+    async fetchDetections() {
+        if (!this.sessionActive) return;
+        
+        try {
+            const response = await fetch('/api/detections');
+            const data = await response.json();
+            
+            // Update detections list
+            this.updateDetectionsList(data.detections || []);
+            
+        } catch (error) {
+            console.error('Error fetching detections:', error);
+        }
+    }
+    
+    updateDetectionsList(detections) {
+        const log = document.getElementById('detections-log');
+        
+        if (detections.length === 0) {
+            log.innerHTML = '<div class="empty-state">No detections yet</div>';
+            return;
+        }
+        
+        log.innerHTML = detections.map(det => {
+            const time = this.formatDetectionTime(det.timestamp);
+            const confidencePercent = (det.confidence * 100).toFixed(1);
+            const isUnknown = det.is_unknown;
+            
+            return `
+                <div class="detection-item">
+                    <div class="detection-header">
+                        <span class="detection-name">${det.student_name}</span>
+                        <span class="detection-time">${time}</span>
+                    </div>
+                    <div class="detection-details">
+                        <span class="detection-id">${det.student_id}</span>
+                        ${!isUnknown ? `<span class="detection-confidence">${confidencePercent}%</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    formatDetectionTime(timestamp) {
+        const now = Date.now() / 1000;
+        const diff = Math.floor(now - timestamp);
+        
+        if (diff < 5) return 'Just now';
+        if (diff < 60) return `${diff}s ago`;
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        return `${Math.floor(diff / 3600)}h ago`;
+    }
+    
+    formatTime(seconds) {
+        if (!seconds) return '00:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
     
     async checkBackendStatus() {
         const statusIndicator = document.getElementById('backend-status');
-        const statusText = document.getElementById('backend-text');
         
-        // In this new architecture, we assume backend is reachable if this page loads
-        // But we can check the main API health
         try {
-            // We can't easily check the main backend from here without CORS or proxy
-            // So we'll just assume it's fine for now or check our own server
-            statusIndicator.classList.add('active');
-            statusText.textContent = 'Connected';
+            // Check if we can reach the classes endpoint
+            const response = await fetch('/api/classes/');
+            if (response.ok) {
+                statusIndicator.classList.add('active');
+            }
         } catch (e) {
             statusIndicator.classList.remove('active');
-            statusText.textContent = 'Disconnected';
         }
     }
     
     clearDetections() {
-        this.detections.clear();
         const log = document.getElementById('detections-log');
         log.innerHTML = '<div class="empty-state">No detections yet</div>';
-        
-        this.stats = { totalDetected: 0, registered: 0, unknown: 0 };
-        this.updateStatsDisplay();
-    }
-    
-    updateStatsDisplay() {
-        document.getElementById('total-detected').textContent = this.stats.totalDetected;
-        document.getElementById('registered-count').textContent = this.stats.registered;
-        document.getElementById('unknown-count').textContent = this.stats.unknown;
-    }
-    
-    startFPSCounter() {
-        let frameCount = 0;
-        let lastTime = performance.now();
-        const fpsDisplay = document.getElementById('fps-counter');
-        
-        // This is a client-side estimation, real FPS comes from server stream usually
-        // But for MJPEG, we can't easily count frames in JS.
-        // So we'll just leave it as placeholder or remove it.
-        fpsDisplay.textContent = "FPS: --"; 
-    }
-    
-    updateLastUpdateTime() {
-        // Update "Just now", "5s ago" etc. in the log
-        // Implementation omitted for brevity
     }
 }
 

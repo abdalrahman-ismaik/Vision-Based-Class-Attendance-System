@@ -90,6 +90,7 @@ class FaceTracker:
                     'bbox': det_bbox,
                     'label': self.faces[best_match_id]['label'],
                     'confidence': self.faces[best_match_id].get('confidence', 0.0),
+                    'student_id': self.faces[best_match_id].get('student_id', ''),
                     'is_new': False
                 }
             else:
@@ -118,8 +119,11 @@ class FaceTracker:
         
         return results
 
-    def set_label(self, face_id: int, label: str, confidence: float = 0.0):
-        """Update label/confidence for a tracked face."""
+    def set_label(self, face_id: int, label: str, confidence: float = 0.0, student_id: str = None):
+        """Update label/confidence/student_id for a tracked face."""
         if face_id in self.faces:
             self.faces[face_id]['label'] = label
             self.faces[face_id]['confidence'] = confidence
+            if student_id is not None:
+                self.faces[face_id]['student_id'] = student_id
+

@@ -60,7 +60,7 @@ class MarkAttendance(Resource):
                 
                 # Load classifier if needed
                 if not pipeline.classifier.is_trained:
-                    classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'face_classifier.pkl')
+                    classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'classifier.pkl')
                     if os.path.exists(classifier_path):
                         pipeline.classifier.load(classifier_path)
                     else:
@@ -183,7 +183,7 @@ class ClassAttendance(Resource):
                 
                 # Load classifier
                 if not pipeline.classifier.is_trained:
-                    classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'face_classifier.pkl')
+                    classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'classifier.pkl')
                     if os.path.exists(classifier_path):
                         pipeline.classifier.load(classifier_path)
                     else:

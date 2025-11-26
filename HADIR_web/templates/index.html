@@ -3,122 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HADIR - Live Attendance Monitoring</title>
+    <title>HADIR - Live Attendance</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
+        <!-- Compact Header -->
         <header class="header">
-            <div class="header-content">
-                <h1>🎓 HADIR Live Attendance</h1>
-                <p class="subtitle">Real-time Face Recognition Attendance System</p>
+            <div class="header-left">
+                <h1>HADIR Live</h1>
+                <div class="status-badges">
+                    <span class="badge" id="backend-badge">
+                        <span id="backend-status" class="status-dot">●</span>
+                        Backend
+                    </span>
+                    <span class="badge" id="camera-badge">
+                        <span id="camera-status" class="status-dot">●</span>
+                        Camera
+                    </span>
+                </div>
             </div>
-            <div class="header-stats">
-                <div class="stat-badge">
-                    <span class="stat-label">Backend:</span>
-                    <span id="backend-status" class="status-indicator">●</span>
-                    <span id="backend-text">Checking...</span>
+            <div class="header-right">
+                <div id="class-info" class="class-info hidden">
+                    <span id="current-class-name"></span>
                 </div>
-                <div class="stat-badge">
-                    <span class="stat-label">Camera:</span>
-                    <span id="camera-status" class="status-indicator">●</span>
-                    <span id="camera-text">Inactive</span>
-                </div>
+                <button id="stop-class-btn" class="btn btn-danger hidden">Stop</button>
             </div>
         </header>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            
-            <!-- Setup Section -->
-            <div class="setup-section" id="setup-section">
-                <div class="setup-card">
-                    <div class="setup-header">
-                        <div class="setup-icon-wrapper">
-                            <span class="setup-icon">🏫</span>
-                        </div>
-                        <h2 class="setup-title">Start Class Session</h2>
-                        <p class="setup-description">Select a class to begin real-time attendance monitoring</p>
-                    </div>
-                    
-                    <div class="setup-body">
-                        <div class="form-group-modern">
-                            <label for="class-select" class="form-label-modern">Select Class</label>
-                            <div class="select-wrapper-modern">
-                                <select id="class-select" class="form-select-modern">
-                                    <option value="">Loading classes...</option>
-                                </select>
-                                <div class="select-icon">
-                                    <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
-                                        <path d="M1 1L6 6L11 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <button id="start-class-btn" class="btn-start-modern">
-                            <span class="btn-start-icon">▶</span>
-                            <span class="btn-start-text">Start Session</span>
-                            <div class="btn-start-glow"></div>
-                        </button>
-                    </div>
+        <!-- Setup Section -->
+        <div class="setup-section" id="setup-section">
+            <div class="setup-card">
+                <h2>Start Class Session</h2>
+                <div class="form-group">
+                    <select id="class-select" class="form-select">
+                        <option value="">Loading classes...</option>
+                    </select>
+                </div>
+                <button id="start-class-btn" class="btn btn-primary">Start Session</button>
+            </div>
+        </div>
+
+        <!-- Main View (Initially Hidden) -->
+        <div class="main-view hidden" id="main-view">
+            <!-- Stats Row -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-label">Session Time</div>
+                    <div class="stat-value" id="session-time">00:00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Detections</div>
+                    <div class="stat-value" id="total-detections">0</div>
+                </div>
+                <div class="stat-card stat-success">
+                    <div class="stat-label">Registered</div>
+                    <div class="stat-value" id="registered-count">0</div>
+                </div>
+                <div class="stat-card stat-warning">
+                    <div class="stat-label">Unknown</div>
+                    <div class="stat-value" id="unknown-count">0</div>
                 </div>
             </div>
 
-            <!-- Video Feed Section (Initially Hidden) -->
-            <div class="video-section hidden" id="video-section">
-                <div class="card">
-                    <div class="card-header">
-                        <h2>📹 Live Camera Feed <span style="font-weight: 400; color: var(--gray-500); margin-left: 0.5rem;">—</span> <span id="current-class-display" style="color: var(--primary); margin-left: 0.5rem;"></span></h2>
-                        <div class="controls" style="display: flex; gap: 0.5rem;">
-                            <button id="fullscreen-btn" class="btn btn-secondary">⛶ Fullscreen</button>
-                            <button id="stop-class-btn" class="btn btn-danger">Stop Class</button>
-                        </div>
-                    </div>
+            <!-- Video and Detections Row -->
+            <div class="content-row">
+                <!-- Video Feed -->
+                <div class="video-panel">
                     <div class="video-container" id="video-container">
-                        <img id="video-feed" src="" alt="Live video feed">
+                        <img id="video-feed" src="" alt="Live feed">
                         <div class="video-overlay">
-                            <div class="overlay-info">
-                                <span id="fps-counter">FPS: --</span>
-                                <span style="margin: 0 0.5rem;">|</span>
-                                <span id="faces-counter">Faces: 0</span>
-                            </div>
+                            <span id="fps-counter">FPS: --</span>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Right Column: Stats & Logs (Initially Hidden) -->
-            <div class="stats-section hidden" id="stats-section">
-                <!-- Stats Cards -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>Total Detected</h3>
-                        <div class="stat-value" id="total-detected">0</div>
+                <!-- Recent Detections -->
+                <div class="detections-panel">
+                    <div class="panel-header">
+                        <h3>Recent Detections</h3>
+                        <button id="clear-btn" class="btn btn-sm">Clear</button>
                     </div>
-                    <div class="stat-card success">
-                        <h3>Registered</h3>
-                        <div class="stat-value" id="registered-count">0</div>
-                    </div>
-                    <div class="stat-card warning">
-                        <h3>Unknown</h3>
-                        <div class="stat-value" id="unknown-count">0</div>
-                    </div>
-                </div>
-
-                <!-- Recent Detections List -->
-                <div class="card detections-list">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <h2>📋 Recent Detections</h2>
-                        <button id="clear-btn" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">Clear</button>
-                    </div>
-                    <div class="detections-list-content" id="detections-log">
-                        <!-- Detections will be added here -->
-                        <div class="empty-state" style="text-align: center; padding: 2rem; color: var(--gray-500);">
-                            No detections yet
-                        </div>
+                    <div class="detections-list" id="detections-log">
+                        <div class="empty-state">No detections yet</div>
                     </div>
                 </div>
             </div>

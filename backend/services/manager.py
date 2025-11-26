@@ -21,7 +21,7 @@ def get_pipeline():
                     _pipeline = FaceProcessingPipeline()
                     
                     # Use single classifier location
-                    classifier_path = os.path.join(STORAGE_DIR, "classifiers", "face_classifier.pkl")
+                    classifier_path = os.path.join(STORAGE_DIR, "classifiers", "classifier.pkl")
                     
                     if os.path.exists(classifier_path):
                         try:
@@ -58,7 +58,7 @@ def retrain_classifier():
     try:
         processed_dir = os.path.join(STORAGE_DIR, "processed")
         # Use classifiers directory
-        classifier_path = os.path.join(STORAGE_DIR, "classifiers", "face_classifier.pkl")
+        classifier_path = os.path.join(STORAGE_DIR, "classifiers", "classifier.pkl")
         
         if not os.path.exists(processed_dir):
             logger.error(f"Processed directory not found: {processed_dir}")

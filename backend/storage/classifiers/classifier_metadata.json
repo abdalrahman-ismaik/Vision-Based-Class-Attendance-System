@@ -1,0 +1,63 @@
+{
+  "trained_at": "2025-11-26T14:03:06.874781",
+  "n_students": 4,
+  "n_embeddings": 400,
+  "average_test_accuracy": 0.98125,
+  "average_test_f1": 0.9634146341463414,
+  "per_student_metrics": {
+    "100063102": {
+      "train_accuracy": 1.0,
+      "test_accuracy": 1.0,
+      "test_precision": 1.0,
+      "test_recall": 1.0,
+      "test_f1": 1.0,
+      "n_positive": 100,
+      "n_negative": 300,
+      "n_train": 320,
+      "n_test": 80,
+      "class_weight_positive": 2.0,
+      "class_weight_negative": 0.6666666666666666
+    },
+    "100064692": {
+      "train_accuracy": 0.984375,
+      "test_accuracy": 1.0,
+      "test_precision": 1.0,
+      "test_recall": 1.0,
+      "test_f1": 1.0,
+      "n_positive": 100,
+      "n_negative": 300,
+      "n_train": 320,
+      "n_test": 80,
+      "class_weight_positive": 2.0,
+      "class_weight_negative": 0.6666666666666666
+    },
+    "100064807": {
+      "train_accuracy": 1.0,
+      "test_accuracy": 0.9875,
+      "test_precision": 0.9523809523809523,
+      "test_recall": 1.0,
+      "test_f1": 0.975609756097561,
+      "n_positive": 100,
+      "n_negative": 300,
+      "n_train": 320,
+      "n_test": 80,
+      "class_weight_positive": 2.0,
+      "class_weight_negative": 0.6666666666666666
+    },
+    "100064881": {
+      "train_accuracy": 0.9625,
+      "test_accuracy": 0.9375,
+      "test_precision": 0.8571428571428571,
+      "test_recall": 0.9,
+      "test_f1": 0.8780487804878049,
+      "n_positive": 100,
+      "n_negative": 300,
+      "n_train": 320,
+      "n_test": 80,
+      "class_weight_positive": 2.0,
+      "class_weight_negative": 0.6666666666666666
+    }
+  },
+  "classifier_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\classifiers\\classifier.pkl",
+  "classifier_type": "binary_per_student"
+}

@@ -102,8 +102,38 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
     // Generate session ID
     _registrationSessionId = 'REG_${DateTime.now().millisecondsSinceEpoch}';
     
+    // Clear any previous registration state
+    _resetRegistrationState();
+    
     // Initialize repositories
     _initializeRepositories();
+  }
+
+  /// Reset all registration state for a fresh start
+  void _resetRegistrationState() {
+    _capturedFrames.clear();
+    _poseCaptureComplete = false;
+    _currentPoseIndex = 0;
+    _currentPoseType = PoseType.frontal;
+    _currentPoseInstruction = 'Position student';
+    _currentStep = 0;
+    
+    // Reset form controllers
+    _studentIdController.clear();
+    _firstNameController.clear();
+    _lastNameController.clear();
+    _emailController.clear();
+    _phoneController.clear();
+    _majorController.clear();
+    _nationalityController.clear();
+    
+    // Reset optional fields
+    _selectedDateOfBirth = null;
+    _selectedGender = Gender.male;
+    _selectedAcademicLevel = AcademicLevel.undergraduate;
+    _selectedEnrollmentYear = null;
+    
+    debugPrint('[REGISTRATION] State reset complete');
   }
 
   Future<void> _initializeRepositories() async {

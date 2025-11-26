@@ -77,6 +77,14 @@ class CameraManager:
         self.class_id: Optional[str] = None
         self.lock = threading.Lock()
         self.is_running = False
+        
+        # Stats tracking
+        self.registered_students = set()  # Track unique recognized students
+        self.total_detections = 0  # Total faces detected
+        self.unknown_count = 0  # Unknown faces count
+        self.session_start_time = None
+        self.recent_detections = []  # List of recent detection events
+        self.max_detections_history = 50  # Keep last 50 detections
 
     def start(self, class_id: str):
         with self.lock:
@@ -84,6 +92,12 @@ class CameraManager:
                 self.stop()
             
             self.class_id = class_id
+            self.registered_students.clear()
+            self.total_detections = 0
+            self.unknown_count = 0
+            self.session_start_time = time.time()
+            self.recent_detections.clear()
+            
             try:
                 self.cap = open_video_source(self.source)
                 self.is_running = True
@@ -100,7 +114,62 @@ class CameraManager:
             self.cap = None
             self.is_running = False
             self.class_id = None
+            self.session_start_time = None
             print("Camera stopped")
+    
+    def record_recognition(self, student_id: str = None, student_name: str = None, confidence: float = 0.0, is_unknown: bool = False):
+        """Record a successful recognition with full details"""
+        with self.lock:
+            timestamp = time.time()
+            
+            if is_unknown:
+                self.unknown_count += 1
+                detection_event = {
+                    'student_id': 'Unknown',
+                    'student_name': 'Unknown',
+                    'confidence': confidence,
+                    'timestamp': timestamp,
+                    'is_unknown': True
+                }
+                # Add to recent detections (newest first)
+                self.recent_detections.insert(0, detection_event)
+            elif student_id and student_id != 'Unknown':
+                self.registered_students.add(student_id)
+                detection_event = {
+                    'student_id': student_id,
+                    'student_name': student_name,
+                    'confidence': confidence,
+                    'timestamp': timestamp,
+                    'is_unknown': False
+                }
+                # Add to recent detections (newest first)
+                self.recent_detections.insert(0, detection_event)
+            
+            # Keep only the most recent detections
+            if len(self.recent_detections) > self.max_detections_history:
+                self.recent_detections = self.recent_detections[:self.max_detections_history]
+    
+    def get_stats(self):
+        """Get current session statistics"""
+        with self.lock:
+            uptime = 0
+            if self.session_start_time:
+                uptime = int(time.time() - self.session_start_time)
+            
+            return {
+                'is_running': self.is_running,
+                'class_id': self.class_id,
+                'registered_count': len(self.registered_students),
+                'unknown_count': self.unknown_count,
+                'total_detections': self.total_detections,
+                'session_uptime': uptime,
+                'registered_students': list(self.registered_students)
+            }
+    
+    def get_recent_detections(self):
+        """Get recent detection events"""
+        with self.lock:
+            return self.recent_detections.copy()
 
     def get_frame(self):
         with self.lock:
@@ -110,6 +179,103 @@ class CameraManager:
 
 def create_app(video_source: str) -> Flask:
     app = Flask(__name__, template_folder='templates')
+    
+    # Drawing helper functions for face annotations
+    def draw_recognized_box(frame, x, y, w, h, color, student_name, student_id, confidence):
+        """Draw box with name header, confidence top, ID bottom for recognized student."""
+        # Calculate dynamic font scale based on box width
+        font_scale = max(0.4, min(0.8, w / 200))
+        thickness = max(1, int(font_scale * 2))
+        
+        # Draw main tracking box
+        cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+        
+        # Draw name box above tracking box (same width)
+        name_box_height = int(30 * font_scale)
+        name_y_start = y - name_box_height - 5
+        
+        # Ensure name box doesn't go off screen
+        if name_y_start < 0:
+            name_y_start = y + h + 5
+        
+        # Draw filled rectangle for name
+        cv2.rectangle(frame, (x, name_y_start), (x+w, name_y_start+name_box_height), color, -1)
+        
+        # Draw student name centered in name box with dynamic scaling to fit width
+        # Calculate text size and scale down if needed
+        name_font_scale = font_scale
+        name_thickness = thickness
+        padding = 10  # Padding on each side
+        max_text_width = w - (2 * padding)
+        
+        # Iteratively reduce font scale until text fits
+        for scale_attempt in range(10):  # Max 10 attempts
+            name_text_size = cv2.getTextSize(student_name, cv2.FONT_HERSHEY_SIMPLEX, name_font_scale, name_thickness)[0]
+            if name_text_size[0] <= max_text_width:
+                break
+            name_font_scale *= 0.85  # Reduce by 15% each iteration
+            name_thickness = max(1, int(name_font_scale * 2))
+        
+        name_text_x = x + (w - name_text_size[0]) // 2
+        name_text_y = name_y_start + (name_box_height + name_text_size[1]) // 2
+        cv2.putText(frame, student_name, (name_text_x, name_text_y), 
+                   cv2.FONT_HERSHEY_SIMPLEX, name_font_scale, (0, 0, 0), name_thickness)  # Black and bold
+        
+        # Draw confidence on top line inside box
+        conf_text = f"Conf: {confidence:.2f}"
+        cv2.putText(frame, conf_text, (x + 5, y + 20), 
+                   cv2.FONT_HERSHEY_SIMPLEX, font_scale * 0.7, color, thickness)
+        
+        # Draw student ID on bottom line inside box
+        id_text = f"ID: {student_id}"
+        cv2.putText(frame, id_text, (x + 5, y + h - 10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, font_scale * 0.7, color, thickness)
+    
+    def draw_unknown_box(frame, x, y, w, h, color, confidence):
+        """Draw box for unknown face."""
+        font_scale = max(0.4, min(0.8, w / 200))
+        thickness = max(1, int(font_scale * 2))
+        
+        # Draw tracking box
+        cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+        
+        # Draw "Unknown" label above box
+        label_text = "Unknown"
+        text_size = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)[0]
+        label_x = x + (w - text_size[0]) // 2
+        label_y = y - 10
+        
+        if label_y < 20:
+            label_y = y + 25
+        
+        cv2.putText(frame, label_text, (label_x, label_y), 
+                   cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
+        
+        # Draw confidence if available
+        if confidence > 0:
+            conf_text = f"{confidence:.2f}"
+            cv2.putText(frame, conf_text, (x + 5, y + h - 10), 
+                       cv2.FONT_HERSHEY_SIMPLEX, font_scale * 0.7, color, thickness)
+    
+    def draw_scanning_box(frame, x, y, w, h, color):
+        """Draw box for face being processed."""
+        font_scale = max(0.4, min(0.8, w / 200))
+        thickness = max(1, int(font_scale * 2))
+        
+        # Draw tracking box
+        cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+        
+        # Draw "Scanning..." label
+        label_text = "Scanning..."
+        text_size = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)[0]
+        label_x = x + (w - text_size[0]) // 2
+        label_y = y - 10
+        
+        if label_y < 20:
+            label_y = y + h // 2
+        
+        cv2.putText(frame, label_text, (label_x, label_y), 
+                   cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
     
     # Initialize components
     logger.info("Initializing face detector...")
@@ -133,34 +299,58 @@ def create_app(video_source: str) -> Flask:
         logger.error(f"✗ Failed to initialize pipeline: {e}")
         pipeline = None
     
-    # Verification queue for ambiguous faces with thread lock
-    # Format: {face_id: {'predictions': [list of prediction dicts], 'attempts': int, 'processing': bool}}
-    verification_queue = {}
-    verification_lock = threading.Lock()
-    MAX_VERIFICATION_ATTEMPTS = 3
-    MIN_REQUIRED_MARGIN = 0.05
+    # Multi-sample verification system for reliable recognition
+    # Collects 10 predictions over 5 seconds and uses most frequent result
+    # Format: {face_id: {'predictions': [list], 'samples_collected': int, 'processing': bool, 
+    #                     'last_sample_time': float, 'first_prediction_time': float}}
+    multi_sample_queue = {}
+    multi_sample_lock = threading.Lock()
+    MAX_SAMPLES = 10  # Collect 10 samples per face
+    SAMPLE_INTERVAL = 0.5  # 0.5 seconds between samples
+    MIN_SAMPLES_FOR_DECISION = 5  # Minimum samples before making a decision
 
     def recognize_face_direct(face_id: int, face_crop, current_class_id: str):
-        """Process cropped face using backend pipeline directly."""
+        """Process cropped face using backend pipeline directly with multi-sample verification."""
         try:
-            # Check if another thread is already processing this face
-            with verification_lock:
-                if face_id in verification_queue:
-                    if verification_queue[face_id].get('processing', False):
+            current_time = time.time()
+            
+            # Check if we should collect a sample for this face
+            with multi_sample_lock:
+                if face_id in multi_sample_queue:
+                    queue_entry = multi_sample_queue[face_id]
+                    
+                    # Check if still processing
+                    if queue_entry.get('processing', False):
                         logger.debug(f"[Face {face_id}] Already being processed by another thread, skipping")
                         return
-                    # Mark as processing
-                    verification_queue[face_id]['processing'] = True
+                    
+                    # Check if enough time has passed since last sample
+                    last_sample_time = queue_entry.get('last_sample_time', 0)
+                    if current_time - last_sample_time < SAMPLE_INTERVAL:
+                        logger.debug(f"[Face {face_id}] Too soon since last sample, skipping")
+                        return
+                    
+                    # Check if we've collected enough samples
+                    samples_collected = queue_entry.get('samples_collected', 0)
+                    if samples_collected >= MAX_SAMPLES:
+                        logger.debug(f"[Face {face_id}] Already collected {MAX_SAMPLES} samples, skipping")
+                        return
+                    
+                    # Mark as processing and update time
+                    queue_entry['processing'] = True
+                    queue_entry['last_sample_time'] = current_time
                 else:
-                    # Initialize queue entry with processing flag
-                    verification_queue[face_id] = {
+                    # Initialize new entry for first sample
+                    multi_sample_queue[face_id] = {
                         'predictions': [],
-                        'attempts': 0,
-                        'processing': True
+                        'samples_collected': 0,
+                        'processing': True,
+                        'last_sample_time': current_time,
+                        'first_prediction_time': current_time
                     }
             
             try:
-                logger.info(f"[Face {face_id}] Starting recognition for class: {current_class_id}")
+                logger.info(f"[Face {face_id}] Collecting sample for class: {current_class_id}")
                 
                 if pipeline is None:
                     logger.error(f"[Face {face_id}] Pipeline not initialized")
@@ -212,12 +402,12 @@ def create_app(video_source: str) -> Flask:
                 
                 # Recognize using pipeline (using crop method to skip redundant face detection)
                 logger.info(f"[Face {face_id}] Running recognition pipeline...")
-                logger.info(f"[Face {face_id}]   - Threshold: 0.65 (increased for stricter matching)")
+                logger.info(f"[Face {face_id}]   - Threshold: 0.60 (lowered for less strict matching)")
                 logger.info(f"[Face {face_id}]   - Allowed students: {enrolled_ids}")
                 
                 result = pipeline.recognize_face_from_crop(
                     face_crop_path=temp_path,
-                    threshold=0.65,  # Increased from 0.6 to match COSINE_THRESHOLD
+                    threshold=0.60,  # Lowered from 0.70 to 0.60 for less strict matching
                     allowed_student_ids=enrolled_ids
                 )
                 
@@ -243,119 +433,146 @@ def create_app(video_source: str) -> Flask:
                 confidence = prediction.get('confidence', 0.0)
                 all_predictions = prediction.get('all_predictions', {})
                 
+                # Check for quality issues first
+                quality_issue = prediction.get('quality_issue')
+                if quality_issue:
+                    logger.warning(f"[Face {face_id}] ✗ Quality check failed: {quality_issue}")
+                    tracker.set_label(face_id, "Low Quality", 0.0)
+                    with multi_sample_lock:
+                        if face_id in multi_sample_queue:
+                            multi_sample_queue[face_id]['processing'] = False
+                    return
+                
                 logger.info(f"[Face {face_id}] Prediction details:")
                 logger.info(f"[Face {face_id}]   - Label: {label}")
                 logger.info(f"[Face {face_id}]   - Confidence: {confidence:.4f}")
                 logger.info(f"[Face {face_id}]   - All predictions: {all_predictions}")
                 
-                # Check if this was an ambiguous match
-                reason = prediction.get('reason', '')
-                margin = prediction.get('margin', 1.0)
+                # Log additional metrics
+                if 'confidence_margin' in prediction:
+                    logger.info(f"[Face {face_id}]   - Confidence margin: {prediction['confidence_margin']:.4f}")
+                if 'reason' in prediction:
+                    logger.info(f"[Face {face_id}]   - Decision reason: {prediction['reason']}")
                 
-                if reason == 'ambiguous_match':
-                    with verification_lock:
-                        # Check if face still in queue (might have been cleared by another thread)
-                        if face_id not in verification_queue:
-                            logger.warning(f"[Face {face_id}] Face already processed and cleared from queue")
-                            tracker.set_label(face_id, "Already Processed", 0.0)
-                            return
+                # Add prediction to multi-sample queue
+                with multi_sample_lock:
+                    if face_id not in multi_sample_queue:
+                        logger.warning(f"[Face {face_id}] Face entry disappeared from queue")
+                        return
+                    
+                    queue_entry = multi_sample_queue[face_id]
+                    queue_entry['predictions'].append({
+                        'label': label,
+                        'confidence': confidence,
+                        'all_predictions': all_predictions
+                    })
+                    queue_entry['samples_collected'] += 1
+                    queue_entry['processing'] = False
+                    
+                    samples_collected = queue_entry['samples_collected']
+                    logger.info(f"[Face {face_id}] Sample {samples_collected}/{MAX_SAMPLES} collected")
+                    
+                    # Update UI to show progress
+                    tracker.set_label(face_id, f"Sampling... {samples_collected}/{MAX_SAMPLES}", confidence)
+                    
+                    # Check if we should make a decision
+                    should_decide = samples_collected >= MIN_SAMPLES_FOR_DECISION
+                    time_elapsed = current_time - queue_entry['first_prediction_time']
+                    
+                    # Force decision after 6 seconds or when we hit MAX_SAMPLES
+                    if samples_collected >= MAX_SAMPLES or time_elapsed > 6.0:
+                        should_decide = True
+                        logger.info(f"[Face {face_id}] Forcing decision: samples={samples_collected}, time_elapsed={time_elapsed:.1f}s")
+                    
+                    if not should_decide:
+                        logger.info(f"[Face {face_id}] Need more samples before decision")
+                        return
+                    
+                    # MAKE DECISION using majority voting
+                    logger.info(f"[Face {face_id}] Making decision based on {samples_collected} samples")
+                    
+                    predictions = queue_entry['predictions']
+                    
+                    # Count votes for each student
+                    vote_counts = {}
+                    confidence_sums = {}
+                    
+                    for pred in predictions:
+                        pred_label = pred['label']
+                        pred_conf = pred['confidence']
                         
-                        # Add prediction to queue
-                        verification_queue[face_id]['predictions'].append(prediction)
-                        verification_queue[face_id]['attempts'] += 1
+                        if pred_label != 'Unknown':
+                            vote_counts[pred_label] = vote_counts.get(pred_label, 0) + 1
+                            confidence_sums[pred_label] = confidence_sums.get(pred_label, 0) + pred_conf
+                    
+                    # Also count Unknown votes
+                    unknown_votes = sum(1 for pred in predictions if pred['label'] == 'Unknown')
+                    
+                    logger.info(f"[Face {face_id}] Vote distribution: {vote_counts}, Unknown: {unknown_votes}")
+                    
+                    final_label = 'Unknown'
+                    final_confidence = 0.0
+                    
+                    if vote_counts:
+                        # Get student with most votes
+                        winner = max(vote_counts, key=vote_counts.get)
+                        winner_votes = vote_counts[winner]
+                        avg_confidence = confidence_sums[winner] / winner_votes
                         
-                        attempts = verification_queue[face_id]['attempts']
-                        logger.warning(f"[Face {face_id}] Ambiguous match (margin: {margin:.4f}), collecting more samples ({attempts}/{MAX_VERIFICATION_ATTEMPTS})")
+                        # Require at least 40% of samples to agree (4 out of 10, or 2 out of 5)
+                        vote_percentage = winner_votes / samples_collected
                         
-                        if attempts < MAX_VERIFICATION_ATTEMPTS:
-                            # Need more samples, clear processing flag and return
-                            verification_queue[face_id]['processing'] = False
-                            tracker.set_label(face_id, f"Verifying... {attempts}/{MAX_VERIFICATION_ATTEMPTS}", confidence)
-                            return
+                        logger.info(f"[Face {face_id}] Winner: {winner}, votes: {winner_votes}/{samples_collected} ({vote_percentage*100:.1f}%), avg_conf: {avg_confidence:.4f}")
+                        
+                        if vote_percentage >= 0.4 and avg_confidence >= 0.55:
+                            final_label = winner
+                            final_confidence = avg_confidence
+                            logger.info(f"[Face {face_id}] ✓ ACCEPTED by majority voting")
                         else:
-                            # Max attempts reached, use majority voting
-                            logger.info(f"[Face {face_id}] Max attempts reached, using majority voting across {len(verification_queue[face_id]['predictions'])} samples")
-                            
-                            # Count votes for each student
-                            vote_counts = {}
-                            cosine_sums = {}
-                            
-                            for pred in verification_queue[face_id]['predictions']:
-                                cosine_sims = pred.get('cosine_similarities', {})
-                                if cosine_sims:
-                                    best_student = max(cosine_sims, key=cosine_sims.get)
-                                    vote_counts[best_student] = vote_counts.get(best_student, 0) + 1
-                                    cosine_sums[best_student] = cosine_sums.get(best_student, 0) + cosine_sims[best_student]
-                            
-                            if vote_counts:
-                                # Get student with most votes
-                                winner = max(vote_counts, key=vote_counts.get)
-                                winner_votes = vote_counts[winner]
-                                avg_cosine = cosine_sums[winner] / winner_votes
-                                
-                                logger.info(f"[Face {face_id}] Voting results: {vote_counts}")
-                                logger.info(f"[Face {face_id}] Winner: {winner} with {winner_votes} votes, avg cosine: {avg_cosine:.4f}")
-                                
-                                # Check if winner has clear majority (> 50%) and meets threshold
-                                # Using stricter 0.65 threshold to match updated COSINE_THRESHOLD
-                                if winner_votes > MAX_VERIFICATION_ATTEMPTS / 2 and avg_cosine >= 0.65:
-                                    label = winner
-                                    confidence = avg_cosine
-                                    logger.info(f"[Face {face_id}] ✓ Verified by majority voting (threshold: 0.65)")
-                                else:
-                                    label = 'Unknown'
-                                    confidence = avg_cosine
-                                    logger.warning(f"[Face {face_id}] ✗ No clear majority or avg_cosine {avg_cosine:.4f} < 0.65, marking as Unknown")
-                            else:
-                                label = 'Unknown'
-                                confidence = 0.0
-                            
-                            # Clean up verification queue
-                            del verification_queue[face_id]
-                else:
-                    # Clear verification queue if face was successfully identified
-                    with verification_lock:
-                        if face_id in verification_queue:
-                            del verification_queue[face_id]
+                            logger.warning(f"[Face {face_id}] ✗ Insufficient votes or confidence")
+                    
+                    # Clean up queue
+                    del multi_sample_queue[face_id]
                 
-                if label != 'Unknown':
-                    student_id = label
+                # Process final decision
+                if final_label != 'Unknown':
+                    student_id = final_label
                     
                     # Load student name from database
                     db = load_database()
                     student_info = db.get(student_id, {})
                     student_name = student_info.get('name', student_id)
                     
-                    logger.info(f"[Face {face_id}] ✓ RECOGNIZED: {student_name} (ID: {student_id}) with confidence {confidence:.2f}")
-                    tracker.set_label(face_id, student_name, confidence)
+                    logger.info(f"[Face {face_id}] ✓ RECOGNIZED: {student_name} (ID: {student_id}) with confidence {final_confidence:.2f}")
+                    tracker.set_label(face_id, student_name, final_confidence, student_id=student_id)
+                    
+                    # Record recognition in stats
+                    camera_manager.record_recognition(student_id, student_name=student_name, confidence=final_confidence, is_unknown=False)
                     
                     # TODO: Mark attendance in database
                     # This should update the attendance record for this student in this class
                     logger.info(f"[Face {face_id}] Attendance marked for {student_id} in class {current_class_id}")
                     
                 else:
-                    logger.warning(f"[Face {face_id}] ✗ NOT RECOGNIZED")
-                    logger.warning(f"[Face {face_id}]   - Best confidence was: {confidence:.4f} (threshold: 0.6)")
-                    if all_predictions:
-                        logger.warning(f"[Face {face_id}]   - Top predictions:")
-                        sorted_preds = sorted(all_predictions.items(), key=lambda x: x[1], reverse=True)[:3]
-                        for sid, conf in sorted_preds:
-                            logger.warning(f"[Face {face_id}]     * {sid}: {conf:.4f}")
+                    logger.warning(f"[Face {face_id}] ✗ NOT RECOGNIZED after {samples_collected} samples")
                     tracker.set_label(face_id, "Unknown", 0.0)
+                    
+                    # Record unknown face in stats
+                    camera_manager.record_recognition(None, confidence=final_confidence, is_unknown=True)
             
             finally:
                 # Always clear processing flag when done
-                with verification_lock:
-                    if face_id in verification_queue:
-                        verification_queue[face_id]['processing'] = False
+                with multi_sample_lock:
+                    if face_id in multi_sample_queue:
+                        multi_sample_queue[face_id]['processing'] = False
                 
         except Exception as e:
             logger.error(f"[Face {face_id}] Recognition error: {e}", exc_info=True)
             tracker.set_label(face_id, "Error", 0.0)
             # Clear from queue on error
-            with verification_lock:
-                if face_id in verification_queue:
-                    del verification_queue[face_id]
+            with multi_sample_lock:
+                if face_id in multi_sample_queue:
+                    del multi_sample_queue[face_id]
 
     def generate_frames() -> Generator[bytes, None, None]:
         frame_count = 0
@@ -376,6 +593,10 @@ def create_app(video_source: str) -> Flask:
             if frame_count % 30 == 0:  # Log every 30 frames
                 logger.debug(f"Frame {frame_count}: Detected {len(faces)} face(s)")
             
+            # Update total detections counter
+            if len(faces) > 0:
+                camera_manager.total_detections = len(faces)
+            
             # 2. Update tracker
             tracked_faces = tracker.update(faces)
             
@@ -383,11 +604,11 @@ def create_app(video_source: str) -> Flask:
             current_class_id = camera_manager.class_id
             
             for face_id, data in tracked_faces.items():
-                # Check if this face is in verification queue (needs retry)
-                needs_verification = face_id in verification_queue
+                # Check if this face needs sampling (either new or still collecting samples)
+                needs_sampling = face_id in multi_sample_queue
                 is_new_face = data['is_new']
                 
-                if (is_new_face or needs_verification) and current_class_id:
+                if (is_new_face or needs_sampling) and current_class_id:
                     x, y, w, h = data['bbox']
                     
                     # Filter out very small faces (likely false detections or too far away)
@@ -400,8 +621,8 @@ def create_app(video_source: str) -> Flask:
                     
                     if is_new_face:
                         logger.info(f"New face detected: ID={face_id}, bbox=({x},{y},{w},{h})")
-                    elif needs_verification:
-                        logger.debug(f"Re-processing face {face_id} for verification")
+                    elif needs_sampling:
+                        logger.debug(f"Re-processing face {face_id} for next sample")
                     
                     # Add margin to the crop (30% on each side for better context)
                     margin_x = int(w * 0.3)
@@ -428,21 +649,23 @@ def create_app(video_source: str) -> Flask:
             for face_id, data in tracked_faces.items():
                 x, y, w, h = data['bbox']
                 label = data['label']
+                confidence = data.get('confidence', 0)
                 
-                # Logic: 
-                # - If label starts with 'face' -> Processing (Yellow/Blue?) -> Let's use Red for now as "Unregistered/Unknown"
-                # - If label is 'Unknown' -> Red
-                # - Otherwise (Name) -> Green
-                
-                if label.startswith('face') or label == 'Unknown':
-                    color = (0, 0, 255) # Red
-                    display_label = "Unknown" if label == 'Unknown' else "Scanning..."
+                # Determine color and display information
+                if label.startswith('face'):
+                    # Processing/Scanning state
+                    color = (255, 165, 0)  # Orange
+                    draw_scanning_box(frame, x, y, w, h, color)
+                elif label == 'Unknown':
+                    # Unknown face
+                    color = (0, 0, 255)  # Red
+                    draw_unknown_box(frame, x, y, w, h, color, confidence)
                 else:
-                    color = (0, 255, 0) # Green
-                    display_label = f"{label} ({data.get('confidence', 0):.2f})"
-
-                cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-                cv2.putText(frame, display_label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+                    # Recognized student
+                    color = (0, 255, 0)  # Green
+                    # Get student ID from tracker data or parse from label
+                    student_id = data.get('student_id', '')
+                    draw_recognized_box(frame, x, y, w, h, color, label, student_id, confidence)
             
             # Encode frame
             ret, buffer = cv2.imencode('.jpg', frame)
@@ -489,6 +712,18 @@ def create_app(video_source: str) -> Flask:
     def video_feed():
         return Response(generate_frames(),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
+    
+    @app.route('/api/stats')
+    def get_stats():
+        """Return current session statistics."""
+        stats = camera_manager.get_stats()
+        return jsonify(stats)
+    
+    @app.route('/api/detections')
+    def get_detections():
+        """Return recent detection events."""
+        detections = camera_manager.get_recent_detections()
+        return jsonify({'detections': detections})
     
     @app.route('/api/classes/')
     def get_classes():

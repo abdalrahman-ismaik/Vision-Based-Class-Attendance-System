@@ -1,56 +1,127 @@
 {
+  "100063102": {
+    "student_id": "100063102",
+    "name": "Hadher Alameemi",
+    "email": "100063102@university.edu",
+    "department": "Computer Science",
+    "year": 3,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100063102\\photo_16_2025-11-26_13-16-34.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100063102\\photo_17_2025-11-26_13-16-34.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100063102\\photo_18_2025-11-26_13-16-34.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100063102\\photo_19_2025-11-26_13-16-34.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100063102\\photo_20_2025-11-26_13-16-34.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-26T13:59:32.427837",
+    "processing_status": "completed",
+    "processed_at": "2025-11-26T14:00:27.300554",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed\\100063102\\embeddings.npy"
+  },
   "100064692": {
-    "uuid": "79bd8143-6c7b-44a0-ba38-89a53902576e",
     "student_id": "100064692",
     "name": "Abd Alrahman Ismaik",
-    "email": "100064692@ku.ac.ae",
+    "email": "100064692@university.edu",
     "department": "Computer Science",
-    "year": 0,
+    "year": 3,
     "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\100064692_pose1_20251126_124345.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\100064692_pose2_20251126_124345.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\100064692_pose3_20251126_124345.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\100064692_pose4_20251126_124345.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\100064692_pose5_20251126_124345.jpg"
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\photo_1_2025-11-26_13-16-33.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\photo_2_2025-11-26_13-16-33.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\photo_3_2025-11-26_13-16-33.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\photo_4_2025-11-26_13-16-33.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064692\\photo_5_2025-11-26_13-16-33.jpg"
     ],
     "num_poses": 5,
-    "registered_at": "2025-11-26T12:43:45.941376",
-    "processing_status": "pending"
+    "registered_at": "2025-11-26T14:00:28.311747",
+    "processing_status": "completed",
+    "processed_at": "2025-11-26T14:01:18.524866",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed\\100064692\\embeddings.npy"
   },
   "100064807": {
-    "uuid": "230aa07f-c1c5-4635-a468-e591134d1bc7",
     "student_id": "100064807",
-    "name": "Mohamed Elashmony ",
-    "email": "100064807@ku.ac.ae",
-    "department": "Applied Mathematics & Data Science",
-    "year": 0,
+    "name": "Mohamed Gamal",
+    "email": "100064807@university.edu",
+    "department": "Computer Science",
+    "year": 3,
     "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\100064807_pose1_20251126_124432.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\100064807_pose2_20251126_124432.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\100064807_pose3_20251126_124432.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\100064807_pose4_20251126_124432.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\100064807_pose5_20251126_124432.jpg"
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\photo_10_2025-11-26_13-16-34.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\photo_6_2025-11-26_13-16-33.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\photo_7_2025-11-26_13-16-33.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\photo_8_2025-11-26_13-16-33.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\photo_9_2025-11-26_13-16-33.jpg"
     ],
     "num_poses": 5,
-    "registered_at": "2025-11-26T12:44:32.822270",
-    "processing_status": "pending"
+    "registered_at": "2025-11-26T14:01:19.528629",
+    "processing_status": "completed",
+    "processed_at": "2025-11-26T14:02:11.159266",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed\\100064807\\embeddings.npy"
   },
   "100064881": {
-    "uuid": "5611a804-af85-4fef-8381-d0f8b63ff46d",
     "student_id": "100064881",
-    "name": "Osama Qadan",
-    "email": "100064881@ku.ac.ae",
+    "name": "Osama Qa'dan",
+    "email": "100064881@university.edu",
+    "department": "Computer Science",
+    "year": 3,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\photo_11_2025-11-26_13-16-34.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\photo_12_2025-11-26_13-16-34.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\photo_13_2025-11-26_13-16-34.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\photo_14_2025-11-26_13-16-34.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\photo_15_2025-11-26_13-16-34.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-26T14:02:12.165249",
+    "processing_status": "completed",
+    "processed_at": "2025-11-26T14:03:05.620757",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed\\100064881\\embeddings.npy"
+  },
+  "100045816": {
+    "uuid": "fab12ca6-3ba0-42dd-84c2-11b0f8d2028f",
+    "student_id": "100045816",
+    "name": "Abd Alrahman  Ismaik",
+    "email": "100045816@ku.ac.ae",
     "department": "Computer Science",
     "year": 0,
     "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\100064881_pose1_20251126_124434.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\100064881_pose2_20251126_124434.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\100064881_pose3_20251126_124434.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\100064881_pose4_20251126_124434.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\100064881_pose5_20251126_124434.jpg"
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100045816\\100045816_pose1_20251126_223120.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100045816\\100045816_pose2_20251126_223120.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100045816\\100045816_pose3_20251126_223120.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100045816\\100045816_pose4_20251126_223120.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100045816\\100045816_pose5_20251126_223120.jpg"
     ],
     "num_poses": 5,
-    "registered_at": "2025-11-26T12:44:34.673452",
-    "processing_status": "pending"
+    "registered_at": "2025-11-26T22:31:20.261454",
+    "processing_status": "completed",
+    "processed_at": "2025-11-26T22:31:46.349700",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\processed\\100045816\\embeddings.npy"
+  },
+  "100064693": {
+    "uuid": "0fe22f54-55f7-4ae6-bf5f-24e1a12f1d30",
+    "student_id": "100064693",
+    "name": "Abd Alrahman  Ismaik",
+    "email": "100064693@ku.ac.ae",
+    "department": "Computer Science",
+    "year": 0,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064693\\100064693_pose1_20251126_224720.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064693\\100064693_pose2_20251126_224720.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064693\\100064693_pose3_20251126_224720.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064693\\100064693_pose4_20251126_224720.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064693\\100064693_pose5_20251126_224720.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-26T22:47:20.364172",
+    "processing_status": "failed",
+    "processing_error": "No face detected"
   }
 }

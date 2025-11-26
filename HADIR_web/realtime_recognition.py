@@ -3,27 +3,36 @@ realtime_recognition.py
 -----------------------
 
 Real-time face detection and recognition service for HADIR_web.
-Integrates with the backend API for face recognition.
+Uses backend face processing pipeline directly.
 
 Features:
 - Face detection using YuNet (OpenCV)
 - Real-time video streaming with MJPEG
 - Green boxes for registered students (with name + ID)
 - Red boxes for unknown faces
-- Background recognition using backend API
+- Direct backend integration (no HTTP API calls)
 - Performance optimization (frame skipping, downscaling)
 """
 
 import cv2
 import numpy as np
 import os
-import requests
+import sys
 import threading
 import logging
 from typing import Generator, Dict, Tuple, Optional
-import os
 from datetime import datetime
 import time
+from PIL import Image
+
+# Add backend to path
+backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
+
+# Import backend modules
+from backend.services.manager import get_pipeline
+from backend.database.core import load_database, load_classes
 
 logger = logging.getLogger(__name__)
 
@@ -223,32 +232,44 @@ class FaceTracker:
 
 
 class RealtimeRecognitionSystem:
-    """Main real-time recognition system."""
+    """Main real-time recognition system with direct backend integration."""
     
     def __init__(self, 
                  camera_source: int = 0,
-                 backend_url: str = 'http://127.0.0.1:5000/api/attendance/class',
                  class_id: str = 'DEFAULT_CLASS'):
         """
         Initialize real-time recognition system.
         
         Args:
             camera_source: Camera index or video file path
-            backend_url: Backend recognition API endpoint
             class_id: Class ID for attendance
         """
-        # Allow overriding via environment variable if provided
-        self.backend_url = os.environ.get('BACKEND_RECOGNITION_URL', backend_url)
         self.class_id = class_id
         self.detector = FaceDetector()
         # Increased max_disappeared to 30 to prevent ID switching on temporary detection loss
         self.tracker = FaceTracker(iou_threshold=0.3, max_disappeared=30)
 
+        # Initialize backend pipeline
+        logger.info("Initializing backend face processing pipeline...")
+        self.pipeline = get_pipeline()
+        if self.pipeline is None:
+            raise RuntimeError("Failed to initialize face processing pipeline")
+        
+        # Load class data and student database
+        classes = load_classes()
+        self.student_database = load_database()  # Load student names
+        if class_id not in classes:
+            logger.warning(f"Class {class_id} not found, will recognize all students")
+            self.enrolled_students = None
+        else:
+            self.enrolled_students = classes[class_id].get('student_ids', [])
+            logger.info(f"Class {class_id} has {len(self.enrolled_students)} enrolled students")
+
         # Track unique registered IDs and count
         self.registered_ids: set[str] = set()
         self.registered_count: int = 0
         
-        # Request throttling to prevent overwhelming backend
+        # Request throttling to prevent overwhelming processing
         self.pending_recognitions = {}  # {face_id: timestamp}
         self.recognition_cooldown = 1.0  # seconds between recognition requests per face
         
@@ -268,22 +289,22 @@ class RealtimeRecognitionSystem:
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         
         logger.info(f"Camera opened successfully (source={camera_source})")
-        logger.info(f"Backend API: {backend_url}")
+        logger.info(f"Using direct backend integration")
     
     def recognize_face_async(self, face_id: int, face_crop: np.ndarray):
         """
-        Send face crop to backend for recognition (runs in background thread).
+        Recognize face using backend pipeline directly (runs in background thread).
         
         Args:
             face_id: Tracked face ID
-            face_crop: Cropped face image
+            face_crop: Cropped face image (BGR format from OpenCV)
         """
         try:
             # Check if we're in cooldown period for this face
             current_time = time.time()
             last_request = self.pending_recognitions.get(face_id, 0)
             if current_time - last_request < self.recognition_cooldown:
-                return  # Skip this request to avoid overwhelming backend
+                return  # Skip this request to avoid overwhelming processing
             
             # Mark request time
             self.pending_recognitions[face_id] = current_time
@@ -294,54 +315,52 @@ class RealtimeRecognitionSystem:
             timestamp = datetime.now().strftime('%H%M%S_%f')
             debug_path = os.path.join(debug_dir, f"face_{face_id}_{timestamp}.jpg")
             cv2.imwrite(debug_path, face_crop)
-            logger.info(f"Saved debug face image to {debug_path}")
+            logger.info(f"[Face {face_id}] Starting recognition for class: {self.class_id}")
             
-            # Encode image as JPEG
-            _, buffer = cv2.imencode('.jpg', face_crop, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            # Convert BGR to RGB and create PIL Image
+            face_rgb = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)
+            face_image = Image.fromarray(face_rgb)
             
-            # Send to backend
-            files = {'image': ('face.jpg', buffer.tobytes(), 'image/jpeg')}
-            data = {'class_id': self.class_id}
+            # Check if classifier is trained
+            if not self.pipeline.classifier.is_trained:
+                logger.error(f"[Face {face_id}] Classifier not trained - please train the classifier first")
+                self.tracker.set_label(face_id, 'Unknown', 0.0)
+                return
             
-            response = requests.post(self.backend_url, files=files, data=data, timeout=30)
+            # Generate embedding
+            embedding = self.pipeline.embedding_generator.generate_embedding(face_image)
             
-            # Handle 404 gracefully (No face detected or classifier not trained)
-            if response.status_code == 404:
-                try:
-                    data = response.json()
-                    if 'error' in data:
-                        logger.warning(f"Backend recognition info for face {face_id}: {data['error']}")
-                        self.tracker.set_label(face_id, 'Unknown', 0.0)
-                        return
-                except ValueError:
-                    # Not JSON, probably a real 404 (endpoint not found)
-                    logger.error(f"Backend endpoint not found (404): {self.backend_url}")
-                    pass
+            # Recognize face (restrict to enrolled students if applicable)
+            result = self.pipeline.classifier.predict(
+                embedding,
+                allowed_student_ids=self.enrolled_students,
+                threshold=0.60  # Lowered from 0.70 to 0.60 for less strict matching
+            )
             
-            response.raise_for_status()
-            
-            data = response.json()
-            
-            # Parse response
-            if data.get('recognized') and data.get('student_id') not in (None, 'Unknown'):
-                student_id = data.get('student_id', 'Unknown')
-                label = student_id  # Use ID as the label per requirement
-                confidence = data.get('confidence', 0.0)
-
+            # Parse result
+            if result['label'] != 'Unknown':
+                student_id = result['label']
+                confidence = result['confidence']
+                confidence_margin = result.get('confidence_margin', 0.0)
+                
+                # Log confidence margin
+                logger.info(f"[Face {face_id}] Confidence margin: {confidence_margin:.3f}")
+                
                 # Increment unique registered count only once per unique student ID
                 if student_id not in self.registered_ids:
                     self.registered_ids.add(student_id)
                     self.registered_count += 1
+                
+                self.tracker.set_label(face_id, student_id, confidence)
+                logger.info(f"[Face {face_id}] Recognized: {student_id} (confidence={confidence:.2f})")
             else:
-                label = 'Unknown'
-                confidence = data.get('confidence', 0.0)
-            
-            # Update tracker
-            self.tracker.set_label(face_id, label, confidence)
-            logger.info(f"Face {face_id} recognized: {label} (confidence={confidence:.2f})")
+                # Log rejection reason if available
+                reason = result.get('reason', 'Unknown reason')
+                logger.info(f"[Face {face_id}] Not recognized - {reason} (confidence={result['confidence']:.2f})")
+                self.tracker.set_label(face_id, 'Unknown', result['confidence'])
             
         except Exception as e:
-            logger.error(f"Recognition error for face {face_id}: {e}")
+            logger.error(f"[Face {face_id}] Recognition error: {e}", exc_info=True)
             self.tracker.set_label(face_id, 'Unknown', 0.0)
     
     def calculate_face_quality(self, face_img: np.ndarray) -> float:
@@ -372,7 +391,7 @@ class RealtimeRecognitionSystem:
 
     def draw_detection(self, frame: np.ndarray, face_id: int, face_data: dict):
         """
-        Draw bounding box and label on frame.
+        Draw bounding box and label on frame with name, ID, and confidence.
         
         Args:
             frame: Image frame
@@ -392,40 +411,76 @@ class RealtimeRecognitionSystem:
         # Draw bounding box
         cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
         
-        # Prepare label text
+        # Prepare text elements based on recognition status
         if label and label != 'Unknown' and label != 'Scanning...' and label != 'Processing...':
-            text = f"{label}"
-            if confidence > 0:
-                text += f" ({confidence:.2f})"
+            # Recognized student - get name from database
+            student_id = label
+            student_name = self.student_database.get(student_id, {}).get('name', 'Unknown Name')
+            
+            # Calculate font sizes based on box width
+            name_font_scale = min(0.7, w / 150.0)  # Scale name font
+            info_font_scale = min(0.5, w / 200.0)  # Scale info font
+            name_thickness = max(1, int(name_font_scale * 2))
+            info_thickness = max(1, int(info_font_scale * 2))
+            
+            # Get text sizes
+            (name_w, name_h), _ = cv2.getTextSize(student_name, cv2.FONT_HERSHEY_SIMPLEX, name_font_scale, name_thickness)
+            (conf_w, conf_h), _ = cv2.getTextSize(f"Conf: {confidence:.2f}", cv2.FONT_HERSHEY_SIMPLEX, info_font_scale, info_thickness)
+            (id_w, id_h), _ = cv2.getTextSize(f"ID: {student_id}", cv2.FONT_HERSHEY_SIMPLEX, info_font_scale, info_thickness)
+            
+            # Draw name box above the face box (same width as face box)
+            name_box_height = name_h + 10
+            cv2.rectangle(frame, (x, y - name_box_height), (x + w, y), color, -1)
+            
+            # Center the name text in the box
+            name_x = x + (w - name_w) // 2
+            name_y = y - (name_box_height - name_h) // 2
+            cv2.putText(frame, student_name, (name_x, name_y), cv2.FONT_HERSHEY_SIMPLEX, 
+                       name_font_scale, (255, 255, 255), name_thickness, cv2.LINE_AA)
+            
+            # Draw confidence on top line inside the box
+            conf_text = f"Conf: {confidence:.2f}"
+            conf_x = x + (w - conf_w) // 2
+            conf_y = y + conf_h + 5
+            cv2.putText(frame, conf_text, (conf_x, conf_y), cv2.FONT_HERSHEY_SIMPLEX,
+                       info_font_scale, color, info_thickness, cv2.LINE_AA)
+            
+            # Draw ID on bottom line inside the box
+            id_text = f"ID: {student_id}"
+            id_x = x + (w - id_w) // 2
+            id_y = y + h - 5
+            cv2.putText(frame, id_text, (id_x, id_y), cv2.FONT_HERSHEY_SIMPLEX,
+                       info_font_scale, color, info_thickness, cv2.LINE_AA)
+            
         elif label == 'Unknown':
+            # Unknown face
             text = "Unknown"
-        elif label == 'Scanning...':
-            text = "Scanning..."
+            font_scale = min(0.6, w / 150.0)
+            thickness = max(1, int(font_scale * 2))
+            (text_w, text_h), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+            
+            # Draw label box above face
+            label_height = text_h + 10
+            cv2.rectangle(frame, (x, y - label_height), (x + w, y), color, -1)
+            text_x = x + (w - text_w) // 2
+            text_y = y - (label_height - text_h) // 2
+            cv2.putText(frame, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX,
+                       font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+            
         else:
-            text = "Processing..."
-        
-        # Draw label background
-        (text_w, text_h), baseline = cv2.getTextSize(
-            text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
-        )
-        cv2.rectangle(
-            frame, 
-            (x, y - text_h - 10), 
-            (x + text_w + 10, y), 
-            color, 
-            -1
-        )
-        
-        # Draw label text
-        cv2.putText(
-            frame, 
-            text, 
-            (x + 5, y - 5), 
-            cv2.FONT_HERSHEY_SIMPLEX, 
-            0.6, 
-            (255, 255, 255), 
-            2
-        )
+            # Processing or Scanning
+            text = label if label else "Processing..."
+            font_scale = min(0.5, w / 150.0)
+            thickness = max(1, int(font_scale * 2))
+            (text_w, text_h), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+            
+            # Draw label box above face
+            label_height = text_h + 10
+            cv2.rectangle(frame, (x, y - label_height), (x + w, y), color, -1)
+            text_x = x + (w - text_w) // 2
+            text_y = y - (label_height - text_h) // 2
+            cv2.putText(frame, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX,
+                       font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
     
     def generate_frames(self) -> Generator[bytes, None, None]:
         """
