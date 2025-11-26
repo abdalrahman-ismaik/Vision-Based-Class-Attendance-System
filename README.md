@@ -5,7 +5,9 @@
 [![Flask](https://img.shields.io/badge/Flask-3.0.0-green.svg)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Course](https://img.shields.io/badge/Course-COSC3030-orange.svg)](#)
+
 ![alt text](docs/bf017508-c5a2-4a1d-847e-357673aae70d.jpeg)
+
 An automated class attendance system leveraging existing CCTV cameras and facial recognition technology. This project utilizes deep learning-based face detection and recognition to streamline the attendance-taking process, developed for the Introduction to Artificial Intelligence (COSC3030) course.
 
 ---
@@ -351,16 +353,15 @@ Vision-Based-Class-Attendance-System/
 
 ## 🔬 Research Components
 
-### AI-Powered Face Data Augmentation
+### Face Data Augmentation
 
-The system implements advanced data augmentation techniques to improve recognition robustness:
+The system implements  data augmentation techniques to improve recognition robustness:
 
-- **Generative Models**: StyleGAN3/DiffusionCLIP for synthetic face generation
 - **Systematic Variations**: 
   - Lighting conditions (20% of synthetic data)
   - Pose variations: -30° to +30° yaw, -15° to +15° pitch (40%)
-  - Scale variations: 3-8 meter camera distances (40%)
-- **Quality Validation**: All generated images pass quality score >0.8
+  - Scale variations: 1-2 meter camera distances (40%)
+- **Quality Validation**: All generated images pass quality score > 0.8
 - **Identity Preservation**: Maintain student identity across variations
 
 ### Ensemble Classification Architecture
@@ -381,11 +382,9 @@ Novel multi-layer classifier system for superior accuracy:
 Innovative continuous video capture system:
 
 1. **Real-time Face Tracking**: Live detection during 8-12 second recording
-2. **Pose Estimation**: Track head pose (yaw, pitch, roll) in real-time
-3. **Coverage Monitoring**: Ensure comprehensive pose space coverage
-4. **Live User Guidance**: Provide directional feedback for optimal rotation
-5. **Frame Selection**: Extract 15-25 best frames with pose diversity
-6. **Quality Assessment**: Real-time quality scoring and validation
+2. **Live User Guidance**: Provide directional feedback for optimal rotation
+3. **Frame Selection**: Extract 15-25 best frames with pose diversity
+4. **Quality Assessment**: Real-time quality scoring and validation
 
 ---
 
@@ -458,8 +457,9 @@ The system is evaluated using standard machine learning metrics:
 
 ## 🎓 Course Context
 
-**Institution**: [Your University]  
-**Course**: COSC3030 - Introduction to Artificial Intelligence  
+**Institution**: Khalifa University  
+**Course**: COSC3030 - Introduction to Artificial Intelligence
+**Instructor**: COSC3030 - Introduction to Artificial Intelligence
 **Project Type**: Vision-based Class Attendance  
 **Timeline**: 10 weeks (September 3 - November 12, 2025)
 
@@ -480,25 +480,6 @@ The project report includes:
 - ✅ Implementation details and code structure
 - ✅ Experimental validation and performance metrics
 - ✅ Comparison with baseline approaches
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/YourFeature`)
-3. Commit your changes (`git commit -m 'Add YourFeature'`)
-4. Push to the branch (`git push origin feature/YourFeature`)
-5. Open a Pull Request
-
-### Development Guidelines
-- Follow PEP 8 style guide for Python code
-- Use meaningful variable and function names
-- Add docstrings to all functions and classes
-- Write unit tests for new features
-- Update documentation as needed
 
 ---
 
@@ -572,19 +553,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Project Repository**: [Vision-Based-Class-Attendance-System](https://github.com/abdalrahman-ismaik/Vision-Based-Class-Attendance-System)
 
-**Team Members**: [Add your team members here]
+**Team Members**:
+- Abd Alrahman Ismaik - 100064692
+- Mohamed Elashmony - 100064807
+- Osama Qadan - 100064881
+- Hadher Alameemi - 100063102
 
 **Course Instructor**: [Add instructor information]
-
----
-
-## 🙏 Acknowledgments
-
-- **CVML-KU-Research** for the FaceNet implementation
-- **Flask** and **Flutter** communities for excellent frameworks
-- **OpenCV** team for computer vision tools
-- Course instructors and teaching assistants for guidance
-- All contributors and testers
 
 ---
 
