@@ -1,24 +1,69 @@
 {
-  "100063102": {
-    "uuid": "d259b39f-7ea0-4f48-868e-5c09e7bc5741",
-    "student_id": "100063102",
-    "name": "Hadher Alameemi",
-    "email": "100063102@ku.ac.ae",
-    "department": "Computer Science",
-    "year": 0,
+
+  "100064692": {
+    "uuid": "cb61f07b-536d-4b36-9cc9-9a29c8641faa",
+    "student_id": "100064692",
+    "name": "Student 100064692",
+    "email": "100064692@ku.ac.ae",
+    "department": "",
+    "year": null,
     "image_paths": [
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100063102\\100063102_pose1_20251126_130634.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100063102\\100063102_pose2_20251126_130634.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100063102\\100063102_pose3_20251126_130634.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100063102\\100063102_pose4_20251126_130634.jpg",
-      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\uploads\\students\\100063102\\100063102_pose5_20251126_130634.jpg"
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064692/photo_1_2025-11-26_13-16-33.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064692/photo_2_2025-11-26_13-16-33.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064692/photo_3_2025-11-26_13-16-33.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064692/photo_4_2025-11-26_13-16-33.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064692/photo_5_2025-11-26_13-16-33.jpg"
     ],
     "num_poses": 5,
-    "registered_at": "2025-11-26T13:06:34.795395",
+    "registered_at": "2025-11-26T13:33:08.680241",
     "processing_status": "completed",
-    "processed_at": "2025-11-26T13:06:46.691299",
+    "processed_at": "2025-11-26T13:33:29.872823",
     "num_poses_captured": 5,
     "num_samples_total": 100,
-    "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\100063102\\embeddings.npy"
+    "embeddings_path": "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/processed_faces/100064692/embeddings.npy"
+  },
+  "100064807": {
+    "uuid": "ce84abd3-999b-4524-8c65-1e1c31f2c1c8",
+    "student_id": "100064807",
+    "name": "Student 100064807",
+    "email": "100064807@ku.ac.ae",
+    "department": "",
+    "year": null,
+    "image_paths": [
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064807/photo_10_2025-11-26_13-16-34.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064807/photo_6_2025-11-26_13-16-33.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064807/photo_7_2025-11-26_13-16-33.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064807/photo_8_2025-11-26_13-16-33.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064807/photo_9_2025-11-26_13-16-33.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-26T13:33:29.874473",
+    "processing_status": "completed",
+    "processed_at": "2025-11-26T13:33:33.839213",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/processed_faces/100064807/embeddings.npy"
+  },
+  "100064881": {
+    "uuid": "b460730b-0664-4d76-b350-1889a1ef6f31",
+    "student_id": "100064881",
+    "name": "Student 100064881",
+    "email": "100064881@ku.ac.ae",
+    "department": "",
+    "year": null,
+    "image_paths": [
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064881/photo_11_2025-11-26_13-16-34.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064881/photo_12_2025-11-26_13-16-34.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064881/photo_13_2025-11-26_13-16-34.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064881/photo_14_2025-11-26_13-16-34.jpg",
+      "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/uploads/students/100064881/photo_15_2025-11-26_13-16-34.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-26T13:33:33.840022",
+    "processing_status": "completed",
+    "processed_at": "2025-11-26T13:33:37.841068",
+    "num_poses_captured": 5,
+    "num_samples_total": 100,
+    "embeddings_path": "/home/mohamed/Code/Vision-Based-Class-Attendance-System/backend/processed_faces/100064881/embeddings.npy"
   }
 }

@@ -260,10 +260,12 @@ class RealtimeRecognitionSystem:
         # Track unique registered IDs and count
         self.registered_ids: set[str] = set()
         self.registered_count: int = 0
+        self.recognized_students: Dict[str, dict] = {}  # {student_id: {name, confidence, timestamp}}
         
         # Request throttling to prevent overwhelming backend
         self.pending_recognitions = {}  # {face_id: timestamp}
-        self.recognition_cooldown = 1.0  # seconds between recognition requests per face
+        self.active_recognitions = set()  # face_ids currently being processed
+        self.recognition_cooldown = 5.0  # seconds between recognition requests per face (increased to 5)
         
         # Buffer for collecting best frames
         self.collecting_faces = {}  # {face_id: {'start_time': float, 'best_score': float, 'best_crop': img}}
@@ -323,12 +325,18 @@ class RealtimeRecognitionSystem:
             face_crop: Cropped face image
         """
         try:
+            # Check if this face is already being processed
+            if face_id in self.active_recognitions:
+                return  # Wait for current request to complete
+            
             # Check if we're in cooldown period for this face
             current_time = time.time()
             last_request = self.pending_recognitions.get(face_id, 0)
             if current_time - last_request < self.recognition_cooldown:
                 return  # Skip this request to avoid overwhelming backend
             
+            # Mark face as actively being processed
+            self.active_recognitions.add(face_id)
             # Mark request time
             self.pending_recognitions[face_id] = current_time
             
@@ -385,6 +393,7 @@ class RealtimeRecognitionSystem:
             # Parse response
             if data.get('recognized') and data.get('student_id') not in (None, 'Unknown'):
                 student_id = data.get('student_id', 'Unknown')
+                student_name = data.get('name', student_id)
                 label = student_id  # Use ID as the label per requirement
                 confidence = data.get('confidence', 0.0)
 
@@ -392,6 +401,13 @@ class RealtimeRecognitionSystem:
                 if student_id not in self.registered_ids:
                     self.registered_ids.add(student_id)
                     self.registered_count += 1
+                
+                # Track recognized student with details
+                self.recognized_students[student_id] = {
+                    'name': student_name,
+                    'confidence': confidence,
+                    'timestamp': time.time()
+                }
             else:
                 label = 'Unknown'
                 confidence = data.get('confidence', 0.0)
@@ -408,6 +424,9 @@ class RealtimeRecognitionSystem:
         except Exception as e:
             logger.error(f"Recognition error for face {face_id}: {e}")
             self.tracker.set_label(face_id, 'Unknown', 0.0)
+        finally:
+            # Always remove from active recognitions when done (success or failure)
+            self.active_recognitions.discard(face_id)
     
     def calculate_face_quality(self, face_img: np.ndarray) -> float:
         """
@@ -610,23 +629,26 @@ class RealtimeRecognitionSystem:
                 else:
                     # Not new, and not collecting.
                     
-                    # RETRY LOGIC: If confidence is low (< 0.8), keep checking
+                    # CONTINUOUS RETRY LOGIC: Always keep trying to recognize the face
                     current_label = face_data.get('label')
                     current_conf = face_data.get('confidence', 0.0)
                     
-                    # Only retry if we have a result (not Processing/Scanning) and confidence is low
-                    if current_label not in (None, 'Processing...', 'Scanning...') and current_conf < 0.8:
-                        # Check cooldown
+                    # Retry for any face that has a result (not currently Processing/Scanning)
+                    # This includes both 'Unknown' faces and recognized faces
+                    if current_label not in (None, 'Processing...', 'Scanning...'):
+                        # Check if not currently being processed and cooldown has passed
                         last_request = self.pending_recognitions.get(face_id, 0)
-                        if time.time() - last_request > self.recognition_cooldown:
-                            logger.info(f"Face {face_id} confidence low ({current_conf:.2f}). Rescanning...")
+                        if (face_id not in self.active_recognitions and 
+                            time.time() - last_request > self.recognition_cooldown):
+                            logger.info(f"Face {face_id} rescanning (current: {current_label}, conf: {current_conf:.2f})...")
                             self.collecting_faces[face_id] = {
                                 'start_time': time.time(),
                                 'best_score': quality_score,
                                 'best_crop': face_crop,
                                 'frames_collected': 1
                             }
-                            self.tracker.set_label(face_id, 'Scanning...', current_conf)
+                            # Keep showing current label during rescan
+                            # Note: Label will update to 'Scanning...' on next iteration when in collecting_faces
 
                     # If label is 'Scanning...', it means we lost state (e.g. cleanup). Restart collection.
                     if face_data.get('label') == 'Scanning...':

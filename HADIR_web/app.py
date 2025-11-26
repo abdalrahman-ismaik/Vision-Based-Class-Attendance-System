@@ -19,6 +19,7 @@ Usage:
 import os
 import logging
 import argparse
+import requests
 from flask import Flask, render_template, Response, request, jsonify
 from flask_cors import CORS
 from realtime_recognition import RealtimeRecognitionSystem
@@ -168,6 +169,59 @@ def configure_class():
     recognition_system.set_class_id(new_class_id)
     logger.info(f"Class ID updated via UI -> {new_class_id}")
     return {'class_id': recognition_system.class_id}
+
+
+@app.route('/api/class/roster')
+def get_class_roster():
+    """Get the roster of students in the current class."""
+    if recognition_system is None:
+        return jsonify({'error': 'Recognition system not initialized'}), 503
+    
+    if not recognition_system.class_id:
+        return jsonify({'error': 'Class ID not set'}), 400
+    
+    try:
+        # Fetch roster from backend
+        backend_base = recognition_system.backend_url.rsplit('/', 2)[0]
+        response = requests.get(
+            f"{backend_base}/api/classes/{recognition_system.class_id}/students",
+            timeout=10
+        )
+        
+        if response.status_code == 404:
+            return jsonify({'error': 'Class not found or no students enrolled'}), 404
+        
+        response.raise_for_status()
+        data = response.json()
+        
+        return jsonify({
+            'class_id': data.get('class_id'),
+            'class_name': data.get('class_name'),
+            'students': data.get('students', [])
+        })
+        
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch class roster: {e}")
+        return jsonify({'error': 'Failed to fetch class roster'}), 500
+
+
+@app.route('/api/attendance/recognized')
+def get_recognized_students():
+    """Get list of students recognized in the current session."""
+    if recognition_system is None:
+        return jsonify({'error': 'Recognition system not initialized'}), 503
+    
+    return jsonify({
+        'recognized_students': [
+            {
+                'student_id': student_id,
+                'name': details['name'],
+                'confidence': details['confidence'],
+                'timestamp': details['timestamp']
+            }
+            for student_id, details in recognition_system.recognized_students.items()
+        ]
+    })
 
 
 @app.errorhandler(404)

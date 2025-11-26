@@ -8,6 +8,9 @@ class AttendanceMonitor {
             registered: 0,
             unknown: 0
         };
+        this.roster = [];
+        this.recognizedStudents = new Set();
+        this.currentClassId = null;
         
         this.init();
     }
@@ -28,6 +31,7 @@ class AttendanceMonitor {
         
         // Setup periodic updates
         setInterval(() => this.updateLastUpdateTime(), 1000);
+        setInterval(() => this.checkRecognizedStudents(), 2000);
         
         console.log('✓ Attendance Monitor ready');
     }
@@ -68,7 +72,7 @@ class AttendanceMonitor {
             return;
         }
 
-        const saveClassId = async () => {
+            const saveClassId = async () => {
             const classId = input.value.trim();
             if (!classId) {
                 this.showToast('Class ID cannot be empty', 'error');
@@ -93,8 +97,12 @@ class AttendanceMonitor {
 
                 const data = await response.json();
                 input.value = data.class_id || '';
+                this.currentClassId = data.class_id;
                 hint.textContent = `Active class: ${data.class_id}`;
                 this.showToast('Class ID updated', 'success');
+                
+                // Fetch and display roster
+                await this.fetchClassRoster();
             } catch (error) {
                 console.error(error);
                 hint.textContent = 'Unable to update class. Check server logs.';
@@ -102,9 +110,7 @@ class AttendanceMonitor {
             } finally {
                 button.disabled = false;
             }
-        };
-
-        button.addEventListener('click', saveClassId);
+        };        button.addEventListener('click', saveClassId);
         input.addEventListener('keyup', (event) => {
             if (event.key === 'Enter') {
                 saveClassId();
@@ -336,6 +342,159 @@ class AttendanceMonitor {
         setTimeout(() => {
             toast.classList.remove('show');
         }, 3000);
+    }
+
+    async fetchClassRoster() {
+        try {
+            const response = await fetch('/api/class/roster');
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    this.showToast('Class not found or has no students', 'warning');
+                    this.hideRoster();
+                    return;
+                }
+                throw new Error('Failed to fetch roster');
+            }
+
+            const data = await response.json();
+            this.roster = data.students || [];
+            this.currentClassId = data.class_id;
+            
+            if (this.roster.length > 0) {
+                this.displayRoster();
+                this.showToast(`Loaded ${this.roster.length} students`, 'success');
+            } else {
+                this.hideRoster();
+                this.showToast('No students enrolled in this class', 'warning');
+            }
+        } catch (error) {
+            console.error('Failed to fetch roster:', error);
+            this.showToast('Failed to load class roster', 'error');
+            this.hideRoster();
+        }
+    }
+
+    displayRoster() {
+        const rosterCard = document.getElementById('roster-card');
+        const rosterList = document.getElementById('roster-list');
+        
+        rosterCard.style.display = 'block';
+        rosterList.innerHTML = '';
+        
+        // Sort roster by student ID
+        const sortedRoster = [...this.roster].sort((a, b) => 
+            a.student_id.localeCompare(b.student_id)
+        );
+        
+        sortedRoster.forEach(student => {
+            const isPresent = this.recognizedStudents.has(student.student_id);
+            const item = this.createRosterItem(student, isPresent);
+            rosterList.appendChild(item);
+        });
+        
+        this.updateAttendanceStats();
+    }
+
+    createRosterItem(student, isPresent = false) {
+        const div = document.createElement('div');
+        div.className = `roster-item ${isPresent ? 'present' : 'absent'}`;
+        div.dataset.studentId = student.student_id;
+        
+        div.innerHTML = `
+            <div class="roster-status">
+                <span class="status-badge ${isPresent ? 'present' : 'absent'}">
+                    ${isPresent ? '✓' : '✗'}
+                </span>
+            </div>
+            <div class="roster-info">
+                <div class="roster-name">${student.name || student.student_id}</div>
+                <div class="roster-id">ID: ${student.student_id}</div>
+            </div>
+            <div class="roster-time" id="time-${student.student_id}">
+                ${isPresent ? 'Present' : 'Absent'}
+            </div>
+        `;
+        
+        return div;
+    }
+
+    hideRoster() {
+        const rosterCard = document.getElementById('roster-card');
+        rosterCard.style.display = 'none';
+    }
+
+    async checkRecognizedStudents() {
+        if (!this.currentClassId || this.roster.length === 0) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/attendance/recognized');
+            
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            const recognizedList = data.recognized_students || [];
+            
+            recognizedList.forEach(student => {
+                if (!this.recognizedStudents.has(student.student_id)) {
+                    // New recognition
+                    this.recognizedStudents.add(student.student_id);
+                    this.markStudentPresent(student.student_id, student.timestamp);
+                }
+            });
+        } catch (error) {
+            console.debug('Failed to check recognized students:', error);
+        }
+    }
+
+    markStudentPresent(studentId, timestamp) {
+        const rosterItem = document.querySelector(`[data-student-id="${studentId}"]`);
+        
+        if (rosterItem) {
+            rosterItem.classList.remove('absent');
+            rosterItem.classList.add('present');
+            
+            const statusBadge = rosterItem.querySelector('.status-badge');
+            statusBadge.textContent = '✓';
+            statusBadge.classList.remove('absent');
+            statusBadge.classList.add('present');
+            
+            const timeElement = rosterItem.querySelector(`#time-${studentId}`);
+            if (timeElement && timestamp) {
+                const time = new Date(timestamp * 1000);
+                timeElement.textContent = time.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            } else {
+                timeElement.textContent = 'Present';
+            }
+            
+            this.updateAttendanceStats();
+        }
+    }
+
+    updateAttendanceStats() {
+        const statsElement = document.getElementById('attendance-stats');
+        const presentCount = this.recognizedStudents.size;
+        const totalCount = this.roster.length;
+        
+        statsElement.textContent = `${presentCount}/${totalCount} Present`;
+        
+        // Update color based on attendance percentage
+        const percentage = totalCount > 0 ? (presentCount / totalCount) * 100 : 0;
+        if (percentage >= 80) {
+            statsElement.style.color = 'var(--success)';
+        } else if (percentage >= 50) {
+            statsElement.style.color = 'var(--warning)';
+        } else {
+            statsElement.style.color = 'var(--danger)';
+        }
     }
 }
 
