@@ -263,5 +263,41 @@
     "num_poses_captured": 5,
     "num_samples_total": 100,
     "embeddings_path": "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\processed_faces\\100064685\\embeddings.npy"
+  },
+  "100064881": {
+    "uuid": "f2b4dcf0-b1fd-43ed-9f81-98d6ebf9305d",
+    "student_id": "100064881",
+    "name": "Osama Qadan",
+    "email": "100064881@ku.ac.ae",
+    "department": "Computer Science",
+    "year": 0,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\100064881_pose1_20251126_122710.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\100064881_pose2_20251126_122710.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\100064881_pose3_20251126_122710.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\100064881_pose4_20251126_122710.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064881\\100064881_pose5_20251126_122710.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-26T12:27:10.522369",
+    "processing_status": "pending"
+  },
+  "100064807": {
+    "uuid": "80022ab4-2588-43f8-8e70-488edf1bb1e8",
+    "student_id": "100064807",
+    "name": "Mohamed Elashmony ",
+    "email": "100064807@ku.ac.ae",
+    "department": "Applied Mathematics & Data Science",
+    "year": 0,
+    "image_paths": [
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\100064807_pose1_20251126_122942.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\100064807_pose2_20251126_122942.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\100064807_pose3_20251126_122942.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\100064807_pose4_20251126_122942.jpg",
+      "C:\\Users\\4bais\\Vision-Based-Class-Attendance-System\\backend\\storage\\uploads\\students\\100064807\\100064807_pose5_20251126_122942.jpg"
+    ],
+    "num_poses": 5,
+    "registered_at": "2025-11-26T12:29:42.822772",
+    "processing_status": "pending"
   }
 }

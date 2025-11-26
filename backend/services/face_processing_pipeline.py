@@ -283,6 +283,7 @@ class FaceClassifier:
         self.classifiers = {}  # Dict of {student_id: classifier}
         self.student_ids = []
         self.is_trained = False
+        self.mean_embeddings = {}  # Store mean embeddings for cosine similarity fallback
     
     def train(self, embeddings, labels):
         """
@@ -316,32 +317,88 @@ class FaceClassifier:
             # Create binary labels: 1 for this student, 0 for others
             binary_labels = (labels == student_id).astype(int)
             
+            # Store mean embedding for this student (for cosine similarity fallback)
+            # CRITICAL FIX: Calculate mean ONLY from original embeddings (first one per augmentation batch)
+            # Assuming augmentations are generated in batches, use only first embedding of each batch
+            student_mask = binary_labels == 1
+            student_embeddings = embeddings[student_mask]
+            
+            # For augmented data: if we have exactly 100 embeddings (5 images * 20 augmentations)
+            # Take every 20th embedding (the original non-augmented ones)
+            n_student_embeddings = len(student_embeddings)
+            if n_student_embeddings % 20 == 0:
+                # We have augmented data, extract originals
+                num_originals = n_student_embeddings // 20
+                original_indices = [i * 20 for i in range(num_originals)]
+                original_embeddings = student_embeddings[original_indices]
+                logger.info(f"    Using {len(original_embeddings)} original embeddings for mean (from {n_student_embeddings} total)")
+            else:
+                # No augmentation or different ratio, use all
+                original_embeddings = student_embeddings
+                logger.info(f"    Using all {len(original_embeddings)} embeddings for mean")
+            
+            # Calculate and normalize mean embedding
+            self.mean_embeddings[student_id] = np.mean(original_embeddings, axis=0)
+            self.mean_embeddings[student_id] /= np.linalg.norm(self.mean_embeddings[student_id])
+            
             # Count positive and negative samples
             n_positive = np.sum(binary_labels == 1)
             n_negative = np.sum(binary_labels == 0)
             
             logger.info(f"    Positive samples: {n_positive}, Negative samples: {n_negative}")
             
-            # Handle class imbalance by adjusting weights
-            # Calculate class weights inversely proportional to class frequencies
-            weight_positive = len(binary_labels) / (2 * n_positive)
-            weight_negative = len(binary_labels) / (2 * n_negative)
+            # CRITICAL FIX: Balance the dataset by undersampling negatives
+            # Too many negatives causes SVM probability calibration issues
+            MAX_NEGATIVE_RATIO = 5  # At most 5x negative samples compared to positive
+            
+            if n_negative > n_positive * MAX_NEGATIVE_RATIO:
+                # Undersample negatives
+                negative_indices = np.where(binary_labels == 0)[0]
+                positive_indices = np.where(binary_labels == 1)[0]
+                
+                # Randomly select subset of negatives
+                target_negatives = n_positive * MAX_NEGATIVE_RATIO
+                selected_negative_indices = np.random.choice(
+                    negative_indices, 
+                    size=target_negatives, 
+                    replace=False
+                )
+                
+                # Combine indices
+                selected_indices = np.concatenate([positive_indices, selected_negative_indices])
+                np.random.shuffle(selected_indices)
+                
+                # Create balanced dataset
+                embeddings_balanced = embeddings[selected_indices]
+                labels_balanced = binary_labels[selected_indices]
+                
+                logger.info(f"    Undersampled negatives: {n_negative} -> {target_negatives}")
+                n_negative = target_negatives
+            else:
+                embeddings_balanced = embeddings
+                labels_balanced = binary_labels
+            
+            # Handle class imbalance with adjusted weights
+            weight_positive = len(labels_balanced) / (2 * n_positive)
+            weight_negative = len(labels_balanced) / (2 * n_negative)
             class_weights = {1: weight_positive, 0: weight_negative}
             
             # Split data
             X_train, X_test, y_train, y_test = train_test_split(
-                embeddings, binary_labels, 
+                embeddings_balanced, labels_balanced, 
                 test_size=0.2, 
                 random_state=42,
-                stratify=binary_labels  # Maintain class balance in splits
+                stratify=labels_balanced  # Maintain class balance in splits
             )
             
             # Train binary SVM classifier with class weights
+            # IMPROVEMENT: Increase C for better margin and use RBF kernel for non-linear boundaries
             classifier = SVC(
-                kernel='linear', 
+                kernel='rbf',  # RBF kernel can capture non-linear patterns better
                 probability=True, 
-                C=1.0,
-                class_weight=class_weights  # Handle imbalance
+                C=10.0,  # Higher C for stricter classification
+                gamma='scale',  # Automatic gamma scaling
+                class_weight=class_weights
             )
             classifier.fit(X_train, y_train)
             
@@ -404,29 +461,59 @@ class FaceClassifier:
         if not self.is_trained:
             raise ValueError("Classifiers not trained yet!")
         
+        logger.info(f"  [Classifier] Starting prediction...")
+        logger.info(f"  [Classifier]   Embedding shape: {embedding.shape}")
+        logger.info(f"  [Classifier]   Threshold: {threshold}")
+        logger.info(f"  [Classifier]   Allowed students: {allowed_student_ids}")
+        logger.info(f"  [Classifier]   Total trained classifiers: {len(self.classifiers)}")
+        
         embedding = embedding.reshape(1, -1)
         
         # Determine which classifiers to consult
         if allowed_student_ids is None:
             iter_classifiers = self.classifiers.items()
+            logger.info(f"  [Classifier]   Using all {len(self.classifiers)} classifiers")
         else:
             # Filter to allowed students and ignore missing ones
-            iter_classifiers = (
+            iter_classifiers = [
                 (sid, self.classifiers[sid])
                 for sid in allowed_student_ids if sid in self.classifiers
-            )
+            ]
+            logger.info(f"  [Classifier]   Using {len(iter_classifiers)} classifiers (from {len(allowed_student_ids)} allowed)")
+            missing = [sid for sid in allowed_student_ids if sid not in self.classifiers]
+            if missing:
+                logger.warning(f"  [Classifier]   Missing classifiers for: {missing}")
 
         # Get predictions from the selected classifiers
         predictions = {}
+        decision_scores = {}  # Store decision function values for debugging
+        cosine_similarities = {}  # Store cosine similarities for comparison
+        
         for student_id, classifier in iter_classifiers:
+            # Get decision function value (distance from hyperplane)
+            decision_value = classifier.decision_function(embedding)[0]
+            decision_scores[student_id] = float(decision_value)
+            
             # Predict probability for positive class (this student)
             proba = classifier.predict_proba(embedding)[0]
             positive_proba = proba[1] if len(proba) > 1 else proba[0]
 
             predictions[student_id] = float(positive_proba)
+            
+            # Also calculate cosine similarity with mean embedding
+            if student_id in self.mean_embeddings:
+                cosine_sim = np.dot(embedding.flatten(), self.mean_embeddings[student_id])
+                cosine_similarities[student_id] = float(cosine_sim)
+            
+            logger.debug(f"  [Classifier]     {student_id}: prob={positive_proba:.4f}, decision={decision_value:.4f}, cosine={cosine_similarities.get(student_id, 0):.4f}")
+        
+        logger.info(f"  [Classifier]   Got predictions for {len(predictions)} students")
+        logger.info(f"  [Classifier]   Decision function values: {decision_scores}")
+        logger.info(f"  [Classifier]   Cosine similarities: {cosine_similarities}")
         
         if len(predictions) == 0:
             # No classifiers available in the allowed set
+            logger.warning(f"  [Classifier] ✗ No classifiers available")
             return {
                 'label': 'Unknown',
                 'confidence': 0.0,
@@ -435,24 +522,90 @@ class FaceClassifier:
             }
 
         # Find student with highest confidence
-        best_student = max(predictions, key=predictions.get)
-        best_confidence = predictions[best_student]
+        best_student_svm = max(predictions, key=predictions.get)
+        best_confidence_svm = predictions[best_student_svm]
         
-        # Check if confidence exceeds threshold
-        if best_confidence < threshold:
+        # Also check cosine similarity
+        best_student_cosine = max(cosine_similarities, key=cosine_similarities.get) if cosine_similarities else None
+        best_similarity = cosine_similarities.get(best_student_cosine, 0) if best_student_cosine else 0
+        
+        logger.info(f"  [Classifier]   Best SVM match: {best_student_svm} with confidence {best_confidence_svm:.4f}")
+        if best_student_cosine:
+            logger.info(f"  [Classifier]   Best cosine match: {best_student_cosine} with similarity {best_similarity:.4f}")
+        
+        # Use cosine similarity as fallback if SVM confidence is low but cosine similarity is high
+        # Typical good cosine similarity threshold is 0.5-0.6 (higher = more strict)
+        COSINE_THRESHOLD = 0.60
+        MIN_MARGIN = 0.03  # Minimum difference between best and second-best match (lowered from 0.05)
+        
+        # Check margin: best match should be significantly better than second-best
+        if len(cosine_similarities) >= 2:
+            sorted_sims = sorted(cosine_similarities.items(), key=lambda x: x[1], reverse=True)
+            best_sim_value = sorted_sims[0][1]
+            second_best_sim_value = sorted_sims[1][1]
+            margin = best_sim_value - second_best_sim_value
+            logger.info(f"  [Classifier]   Cosine similarity margin: {margin:.4f} (best: {best_sim_value:.4f}, second: {second_best_sim_value:.4f})")
+        else:
+            margin = 1.0  # Only one student, no ambiguity
+        
+        # NEW LOGIC: Use SVM result first, confirm with cosine similarity
+        # Get cosine similarity for the best SVM prediction
+        svm_student_cosine = cosine_similarities.get(best_student_svm, 0.0)
+        logger.info(f"  [Classifier]   Best SVM student ({best_student_svm}) cosine similarity: {svm_student_cosine:.4f}")
+        
+        # 1. Check if SVM prediction is confirmed by cosine similarity
+        if svm_student_cosine >= COSINE_THRESHOLD and margin >= MIN_MARGIN:
+            # SVM prediction has good cosine similarity and margin - ACCEPT
+            logger.info(f"  [Classifier] ✓ SVM prediction confirmed by cosine (SVM conf={best_confidence_svm:.4f}, cosine={svm_student_cosine:.4f} >= {COSINE_THRESHOLD}, margin={margin:.4f})")
+            return {
+                'label': best_student_svm,
+                'confidence': svm_student_cosine,  # Use cosine as confidence
+                'all_predictions': predictions,
+                'cosine_similarities': cosine_similarities,
+                'method': 'svm_confirmed_by_cosine',
+                'svm_confidence': best_confidence_svm,
+                'margin': margin,
+                'threshold_used': COSINE_THRESHOLD
+            }
+        elif svm_student_cosine >= COSINE_THRESHOLD and margin < MIN_MARGIN:
+            # SVM prediction has good cosine but margin too small - AMBIGUOUS
+            logger.warning(f"  [Classifier] ✗ Cosine similarity margin too small ({margin:.4f} < {MIN_MARGIN}), ambiguous match")
             return {
                 'label': 'Unknown',
-                'confidence': best_confidence,
+                'confidence': svm_student_cosine,
                 'all_predictions': predictions,
-                'threshold_used': threshold
+                'cosine_similarities': cosine_similarities,
+                'reason': 'ambiguous_match',
+                'margin': margin,
+                'threshold_used': COSINE_THRESHOLD
             }
-        
-        return {
-            'label': best_student,
-            'confidence': best_confidence,
-            'all_predictions': predictions,
-            'threshold_used': threshold
-        }
+        else:
+            # SVM prediction NOT confirmed by cosine - check if best cosine match is different
+            logger.warning(f"  [Classifier] ✗ SVM prediction ({best_student_svm}) cosine {svm_student_cosine:.4f} below threshold {COSINE_THRESHOLD}")
+            
+            if best_student_cosine != best_student_svm and best_similarity >= COSINE_THRESHOLD and margin >= MIN_MARGIN:
+                # Best cosine match is different from SVM and meets criteria - use it as fallback
+                logger.info(f"  [Classifier] → Using best cosine match ({best_student_cosine}) as fallback (SVM picked wrong student)")
+                return {
+                    'label': best_student_cosine,
+                    'confidence': best_similarity,
+                    'all_predictions': predictions,
+                    'cosine_similarities': cosine_similarities,
+                    'method': 'cosine_fallback',
+                    'svm_confidence': predictions.get(best_student_cosine, 0.0),
+                    'margin': margin,
+                    'threshold_used': COSINE_THRESHOLD
+                }
+            else:
+                # No student meets criteria - REJECT
+                logger.warning(f"  [Classifier] ✗ No student meets threshold (best SVM cosine={svm_student_cosine:.4f}, best cosine={best_similarity:.4f})")
+                return {
+                    'label': 'Unknown',
+                    'confidence': best_confidence_svm,
+                    'all_predictions': predictions,
+                    'cosine_similarities': cosine_similarities,
+                    'threshold_used': COSINE_THRESHOLD
+                }
     
     def predict_student(self, embedding, student_id, threshold=0.5):
         """
@@ -499,10 +652,11 @@ class FaceClassifier:
         with open(filepath, 'wb') as f:
             pickle.dump({
                 'classifiers': self.classifiers,
-                'student_ids': self.student_ids
+                'student_ids': self.student_ids,
+                'mean_embeddings': self.mean_embeddings
             }, f)
         
-        logger.info(f"Classifiers saved to {filepath}")
+        logger.info(f"Classifiers saved to {filepath} (with mean embeddings)")
     
     def load(self, filepath):
         """Load classifiers from file"""
@@ -511,9 +665,15 @@ class FaceClassifier:
         
         self.classifiers = data['classifiers']
         self.student_ids = data['student_ids']
+        # Load mean_embeddings if available (for backward compatibility)
+        self.mean_embeddings = data.get('mean_embeddings', {})
         self.is_trained = True
         
         logger.info(f"Loaded {len(self.classifiers)} classifiers from {filepath}")
+        if self.mean_embeddings:
+            logger.info(f"  ✓ Loaded mean embeddings for {len(self.mean_embeddings)} students")
+        else:
+            logger.warning(f"  ⚠ No mean embeddings found - cosine similarity fallback disabled")
 
 
 class FaceProcessingPipeline:
@@ -839,8 +999,13 @@ class FaceProcessingPipeline:
         if not self.classifier.is_trained:
             raise ValueError("Classifier not trained yet!")
         
+        logger.info(f"=== Starting face recognition for: {image_path} ===")
+        logger.info(f"  Threshold: {threshold}")
+        logger.info(f"  Allowed students: {allowed_student_ids}")
+        
         # Load image
         image = Image.open(image_path)
+        logger.info(f"  Image loaded: size={image.size}, mode={image.mode}")
         
         # Fix orientation based on EXIF
         try:
@@ -851,23 +1016,29 @@ class FaceProcessingPipeline:
         image = image.convert('RGB')
         
         # Detect faces
+        logger.info(f"  Detecting faces in image...")
         bboxes = self.face_detector.detect_faces(image)
+        logger.info(f"  Detected {len(bboxes)} face(s)")
         
         # If no faces detected, try rotating
         if len(bboxes) == 0:
+            logger.warning(f"  No faces detected, trying rotation...")
             for angle in [90, 180, 270]:
                 rotated_image = image.rotate(-angle, expand=True)
                 bboxes = self.face_detector.detect_faces(rotated_image)
                 if len(bboxes) > 0:
+                    logger.info(f"  Found face after {angle}° rotation")
                     image = rotated_image
                     break
         
         if len(bboxes) == 0:
+            logger.error(f"  ✗ No face detected in image after all attempts")
             return {'error': 'No face detected'}
         
         # Process first face
         bbox = bboxes[0]
         x1, y1, x2, y2 = map(int, bbox)
+        logger.info(f"  Using first face: bbox=({x1}, {y1}, {x2}, {y2})")
         
         # Add margin
         w = x2 - x1
@@ -877,18 +1048,74 @@ class FaceProcessingPipeline:
         y1 = max(0, y1 - int(h * margin))
         x2 = min(image.width, x2 + int(w * margin))
         y2 = min(image.height, y2 + int(h * margin))
+        logger.info(f"  Face bbox with margin: ({x1}, {y1}, {x2}, {y2})")
         
         # Crop face
         face_image = image.crop((x1, y1, x2, y2))
+        logger.info(f"  Cropped face: size={face_image.size}")
         
         # Generate embedding
+        logger.info(f"  Generating face embedding...")
         embedding = self.embedding_generator.generate_embedding(face_image)
+        logger.info(f"  Embedding generated: shape={embedding.shape}, dtype={embedding.dtype}")
+        logger.info(f"  Embedding stats: min={embedding.min():.4f}, max={embedding.max():.4f}, mean={embedding.mean():.4f}")
         
-    # Predict (optionally restricted to a list of student IDs)
+        # Predict (optionally restricted to a list of student IDs)
+        logger.info(f"  Running classifier prediction...")
         prediction = self.classifier.predict(embedding, threshold=threshold, allowed_student_ids=allowed_student_ids)
+        logger.info(f"  Prediction result: {prediction}")
+        logger.info(f"=== Face recognition complete ===")
         
         return {
             'bbox': [x1, y1, x2, y2],
+            'prediction': prediction
+        }
+    
+    def recognize_face_from_crop(self, face_crop_path, threshold=0.5, allowed_student_ids=None):
+        """
+        Recognize face from an already-cropped face image (skips face detection)
+        
+        Args:
+            face_crop_path: Path to cropped face image
+            threshold: Confidence threshold
+            allowed_student_ids: Optional list of student IDs to restrict recognition to
+        
+        Returns:
+            dict with recognition results
+        """
+        if not self.classifier.is_trained:
+            raise ValueError("Classifier not trained yet!")
+        
+        logger.info(f"=== Starting face recognition from crop: {face_crop_path} ===")
+        logger.info(f"  Threshold: {threshold}")
+        logger.info(f"  Allowed students: {allowed_student_ids}")
+        
+        # Load image
+        image = Image.open(face_crop_path)
+        logger.info(f"  Image loaded: size={image.size}, mode={image.mode}")
+        
+        # Fix orientation based on EXIF
+        try:
+            image = ImageOps.exif_transpose(image)
+        except Exception as e:
+            logger.warning(f"Could not apply EXIF transpose: {e}")
+            
+        image = image.convert('RGB')
+        logger.info(f"  Image converted to RGB: size={image.size}")
+        
+        # Generate embedding directly (skip face detection since already cropped)
+        logger.info(f"  Generating face embedding from crop...")
+        embedding = self.embedding_generator.generate_embedding(image)
+        logger.info(f"  Embedding generated: shape={embedding.shape}, dtype={embedding.dtype}")
+        logger.info(f"  Embedding stats: min={embedding.min():.4f}, max={embedding.max():.4f}, mean={embedding.mean():.4f}")
+        
+        # Predict (optionally restricted to a list of student IDs)
+        logger.info(f"  Running classifier prediction...")
+        prediction = self.classifier.predict(embedding, threshold=threshold, allowed_student_ids=allowed_student_ids)
+        logger.info(f"  Prediction result: {prediction}")
+        logger.info(f"=== Face recognition complete ===")
+        
+        return {
             'prediction': prediction
         }
 

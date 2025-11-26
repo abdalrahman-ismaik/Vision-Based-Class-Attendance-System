@@ -132,87 +132,229 @@ def create_app(video_source: str) -> Flask:
     except Exception as e:
         logger.error(f"✗ Failed to initialize pipeline: {e}")
         pipeline = None
+    
+    # Verification queue for ambiguous faces with thread lock
+    # Format: {face_id: {'predictions': [list of prediction dicts], 'attempts': int, 'processing': bool}}
+    verification_queue = {}
+    verification_lock = threading.Lock()
+    MAX_VERIFICATION_ATTEMPTS = 3
+    MIN_REQUIRED_MARGIN = 0.05
 
     def recognize_face_direct(face_id: int, face_crop, current_class_id: str):
         """Process cropped face using backend pipeline directly."""
         try:
-            logger.info(f"[Face {face_id}] Starting recognition for class: {current_class_id}")
+            # Check if another thread is already processing this face
+            with verification_lock:
+                if face_id in verification_queue:
+                    if verification_queue[face_id].get('processing', False):
+                        logger.debug(f"[Face {face_id}] Already being processed by another thread, skipping")
+                        return
+                    # Mark as processing
+                    verification_queue[face_id]['processing'] = True
+                else:
+                    # Initialize queue entry with processing flag
+                    verification_queue[face_id] = {
+                        'predictions': [],
+                        'attempts': 0,
+                        'processing': True
+                    }
             
-            if pipeline is None:
-                logger.error(f"[Face {face_id}] Pipeline not initialized")
-                tracker.set_label(face_id, "Error: No Pipeline", 0.0)
-                return
-            
-            if not pipeline.classifier.is_trained:
-                logger.error(f"[Face {face_id}] Classifier not trained - please train the classifier first")
-                tracker.set_label(face_id, "Not Trained", 0.0)
-                return
-            
-            # Load class data
-            logger.debug(f"[Face {face_id}] Loading class data...")
-            classes = load_classes()
-            if current_class_id not in classes:
-                logger.warning(f"[Face {face_id}] Class {current_class_id} not found in database")
-                tracker.set_label(face_id, "Unknown Class", 0.0)
-                return
-            
-            class_data = classes[current_class_id]
-            # Support both field names for backward compatibility
-            enrolled_ids = class_data.get('student_ids', class_data.get('enrolled_students', []))
-            logger.info(f"[Face {face_id}] Class has {len(enrolled_ids)} enrolled students")
-            
-            if not enrolled_ids:
-                logger.warning(f"[Face {face_id}] No students enrolled in class {current_class_id}")
-                tracker.set_label(face_id, "No Students", 0.0)
-                return
-            
-            # Save temp image for processing
-            temp_dir = os.path.join(os.path.dirname(__file__), 'temp_faces')
-            os.makedirs(temp_dir, exist_ok=True)
-            temp_path = os.path.join(temp_dir, f'face_{face_id}_{int(time.time()*1000)}.jpg')
-            
-            logger.debug(f"[Face {face_id}] Saving temporary image to {temp_path}")
-            cv2.imwrite(temp_path, face_crop)
-            
-            # Recognize using pipeline
-            logger.info(f"[Face {face_id}] Running recognition pipeline...")
-            result = pipeline.recognize_face(
-                image_path=temp_path,
-                threshold=0.6,
-                allowed_student_ids=enrolled_ids
-            )
-            
-            # Clean up temp file
             try:
-                os.remove(temp_path)
-                logger.debug(f"[Face {face_id}] Cleaned up temporary file")
-            except Exception as cleanup_error:
-                logger.warning(f"[Face {face_id}] Could not delete temp file: {cleanup_error}")
+                logger.info(f"[Face {face_id}] Starting recognition for class: {current_class_id}")
+                
+                if pipeline is None:
+                    logger.error(f"[Face {face_id}] Pipeline not initialized")
+                    tracker.set_label(face_id, "Error: No Pipeline", 0.0)
+                    return
+                
+                if not pipeline.classifier.is_trained:
+                    logger.error(f"[Face {face_id}] Classifier not trained - please train the classifier first")
+                    tracker.set_label(face_id, "Not Trained", 0.0)
+                    return
+                
+                # Load class data
+                logger.debug(f"[Face {face_id}] Loading class data...")
+                classes = load_classes()
+                if current_class_id not in classes:
+                    logger.warning(f"[Face {face_id}] Class {current_class_id} not found in database")
+                    tracker.set_label(face_id, "Unknown Class", 0.0)
+                    return
+                
+                class_data = classes[current_class_id]
+                # Support both field names for backward compatibility
+                enrolled_ids = class_data.get('student_ids', class_data.get('enrolled_students', []))
+                logger.info(f"[Face {face_id}] Class has {len(enrolled_ids)} enrolled students")
+                
+                if not enrolled_ids:
+                    logger.warning(f"[Face {face_id}] No students enrolled in class {current_class_id}")
+                    tracker.set_label(face_id, "No Students", 0.0)
+                    return
+                
+                # Save temp image for processing
+                temp_dir = os.path.join(os.path.dirname(__file__), 'temp_faces')
+                os.makedirs(temp_dir, exist_ok=True)
+                timestamp_ms = int(time.time()*1000)
+                temp_path = os.path.join(temp_dir, f'face_{face_id}_{timestamp_ms}.jpg')
+                
+                # Also save a permanent debug copy
+                debug_dir = os.path.join(os.path.dirname(__file__), 'debug_faces')
+                os.makedirs(debug_dir, exist_ok=True)
+                debug_path = os.path.join(debug_dir, f'face_{face_id}_{timestamp_ms}.jpg')
+                
+                logger.info(f"[Face {face_id}] Saving face image for recognition...")
+                logger.info(f"[Face {face_id}]   - Temp path: {temp_path}")
+                logger.info(f"[Face {face_id}]   - Debug path: {debug_path}")
+                logger.info(f"[Face {face_id}]   - Image shape: {face_crop.shape}")
+                
+                cv2.imwrite(temp_path, face_crop)
+                cv2.imwrite(debug_path, face_crop)
+                logger.info(f"[Face {face_id}] ✓ Images saved successfully")
+                
+                # Recognize using pipeline (using crop method to skip redundant face detection)
+                logger.info(f"[Face {face_id}] Running recognition pipeline...")
+                logger.info(f"[Face {face_id}]   - Threshold: 0.6")
+                logger.info(f"[Face {face_id}]   - Allowed students: {enrolled_ids}")
+                
+                result = pipeline.recognize_face_from_crop(
+                    face_crop_path=temp_path,
+                    threshold=0.6,
+                    allowed_student_ids=enrolled_ids
+                )
+                
+                logger.info(f"[Face {face_id}] Recognition result: {result}")
+                
+                # Clean up temp file (keep debug file)
+                try:
+                    os.remove(temp_path)
+                    logger.debug(f"[Face {face_id}] Cleaned up temporary file")
+                except Exception as cleanup_error:
+                    logger.warning(f"[Face {face_id}] Could not delete temp file: {cleanup_error}")
+                
+                # Check for error first
+                if 'error' in result:
+                    error_msg = result['error']
+                    logger.error(f"[Face {face_id}] ✗ Recognition error: {error_msg}")
+                    tracker.set_label(face_id, "Error", 0.0)
+                    return
+                
+                # Extract prediction from result
+                prediction = result.get('prediction', {})
+                label = prediction.get('label', 'Unknown')
+                confidence = prediction.get('confidence', 0.0)
+                all_predictions = prediction.get('all_predictions', {})
+                
+                logger.info(f"[Face {face_id}] Prediction details:")
+                logger.info(f"[Face {face_id}]   - Label: {label}")
+                logger.info(f"[Face {face_id}]   - Confidence: {confidence:.4f}")
+                logger.info(f"[Face {face_id}]   - All predictions: {all_predictions}")
+                
+                # Check if this was an ambiguous match
+                reason = prediction.get('reason', '')
+                margin = prediction.get('margin', 1.0)
+                
+                if reason == 'ambiguous_match':
+                    with verification_lock:
+                        # Check if face still in queue (might have been cleared by another thread)
+                        if face_id not in verification_queue:
+                            logger.warning(f"[Face {face_id}] Face already processed and cleared from queue")
+                            tracker.set_label(face_id, "Already Processed", 0.0)
+                            return
+                        
+                        # Add prediction to queue
+                        verification_queue[face_id]['predictions'].append(prediction)
+                        verification_queue[face_id]['attempts'] += 1
+                        
+                        attempts = verification_queue[face_id]['attempts']
+                        logger.warning(f"[Face {face_id}] Ambiguous match (margin: {margin:.4f}), collecting more samples ({attempts}/{MAX_VERIFICATION_ATTEMPTS})")
+                        
+                        if attempts < MAX_VERIFICATION_ATTEMPTS:
+                            # Need more samples, clear processing flag and return
+                            verification_queue[face_id]['processing'] = False
+                            tracker.set_label(face_id, f"Verifying... {attempts}/{MAX_VERIFICATION_ATTEMPTS}", confidence)
+                            return
+                        else:
+                            # Max attempts reached, use majority voting
+                            logger.info(f"[Face {face_id}] Max attempts reached, using majority voting across {len(verification_queue[face_id]['predictions'])} samples")
+                            
+                            # Count votes for each student
+                            vote_counts = {}
+                            cosine_sums = {}
+                            
+                            for pred in verification_queue[face_id]['predictions']:
+                                cosine_sims = pred.get('cosine_similarities', {})
+                                if cosine_sims:
+                                    best_student = max(cosine_sims, key=cosine_sims.get)
+                                    vote_counts[best_student] = vote_counts.get(best_student, 0) + 1
+                                    cosine_sums[best_student] = cosine_sums.get(best_student, 0) + cosine_sims[best_student]
+                            
+                            if vote_counts:
+                                # Get student with most votes
+                                winner = max(vote_counts, key=vote_counts.get)
+                                winner_votes = vote_counts[winner]
+                                avg_cosine = cosine_sums[winner] / winner_votes
+                                
+                                logger.info(f"[Face {face_id}] Voting results: {vote_counts}")
+                                logger.info(f"[Face {face_id}] Winner: {winner} with {winner_votes} votes, avg cosine: {avg_cosine:.4f}")
+                                
+                                # Check if winner has clear majority (> 50%)
+                                if winner_votes > MAX_VERIFICATION_ATTEMPTS / 2 and avg_cosine >= 0.60:
+                                    label = winner
+                                    confidence = avg_cosine
+                                    logger.info(f"[Face {face_id}] Verified by majority voting")
+                                else:
+                                    label = 'Unknown'
+                                    confidence = avg_cosine
+                                    logger.warning(f"[Face {face_id}] No clear majority, marking as Unknown")
+                            else:
+                                label = 'Unknown'
+                                confidence = 0.0
+                            
+                            # Clean up verification queue
+                            del verification_queue[face_id]
+                else:
+                    # Clear verification queue if face was successfully identified
+                    with verification_lock:
+                        if face_id in verification_queue:
+                            del verification_queue[face_id]
+                
+                if label != 'Unknown':
+                    student_id = label
+                    
+                    # Load student name from database
+                    db = load_database()
+                    student_info = db.get(student_id, {})
+                    student_name = student_info.get('name', student_id)
+                    
+                    logger.info(f"[Face {face_id}] ✓ RECOGNIZED: {student_name} (ID: {student_id}) with confidence {confidence:.2f}")
+                    tracker.set_label(face_id, student_name, confidence)
+                    
+                    # TODO: Mark attendance in database
+                    # This should update the attendance record for this student in this class
+                    logger.info(f"[Face {face_id}] Attendance marked for {student_id} in class {current_class_id}")
+                    
+                else:
+                    logger.warning(f"[Face {face_id}] ✗ NOT RECOGNIZED")
+                    logger.warning(f"[Face {face_id}]   - Best confidence was: {confidence:.4f} (threshold: 0.6)")
+                    if all_predictions:
+                        logger.warning(f"[Face {face_id}]   - Top predictions:")
+                        sorted_preds = sorted(all_predictions.items(), key=lambda x: x[1], reverse=True)[:3]
+                        for sid, conf in sorted_preds:
+                            logger.warning(f"[Face {face_id}]     * {sid}: {conf:.4f}")
+                    tracker.set_label(face_id, "Unknown", 0.0)
             
-            if result.get('match'):
-                student_id = result.get('student_id')
-                confidence = result.get('confidence', 0.0)
-                
-                # Load student name from database
-                db = load_database()
-                student_info = db.get(student_id, {})
-                student_name = student_info.get('name', student_id)
-                
-                logger.info(f"[Face {face_id}] ✓ RECOGNIZED: {student_name} (ID: {student_id}) with confidence {confidence:.2f}")
-                tracker.set_label(face_id, student_name, confidence)
-                
-                # TODO: Mark attendance in database
-                # This should update the attendance record for this student in this class
-                logger.info(f"[Face {face_id}] Attendance marked for {student_id} in class {current_class_id}")
-                
-            else:
-                reason = result.get('message', 'No match found')
-                logger.warning(f"[Face {face_id}] ✗ NOT RECOGNIZED: {reason}")
-                tracker.set_label(face_id, "Unknown", 0.0)
+            finally:
+                # Always clear processing flag when done
+                with verification_lock:
+                    if face_id in verification_queue:
+                        verification_queue[face_id]['processing'] = False
                 
         except Exception as e:
             logger.error(f"[Face {face_id}] Recognition error: {e}", exc_info=True)
             tracker.set_label(face_id, "Error", 0.0)
+            # Clear from queue on error
+            with verification_lock:
+                if face_id in verification_queue:
+                    del verification_queue[face_id]
 
     def generate_frames() -> Generator[bytes, None, None]:
         frame_count = 0
@@ -236,14 +378,29 @@ def create_app(video_source: str) -> Flask:
             # 2. Update tracker
             tracked_faces = tracker.update(faces)
             
-            # 3. Process new faces
+            # 3. Process new faces and retry ambiguous ones
             current_class_id = camera_manager.class_id
             
             for face_id, data in tracked_faces.items():
-                if data['is_new'] and current_class_id:
+                # Check if this face is in verification queue (needs retry)
+                needs_verification = face_id in verification_queue
+                is_new_face = data['is_new']
+                
+                if (is_new_face or needs_verification) and current_class_id:
                     x, y, w, h = data['bbox']
                     
-                    logger.info(f"New face detected: ID={face_id}, bbox=({x},{y},{w},{h})")
+                    # Filter out very small faces (likely false detections or too far away)
+                    MIN_FACE_SIZE = 40  # Minimum width/height in pixels
+                    if w < MIN_FACE_SIZE or h < MIN_FACE_SIZE:
+                        if is_new_face:
+                            logger.warning(f"Face {face_id} too small ({w}x{h}), skipping recognition")
+                            tracker.set_label(face_id, "Too Small", 0.0)
+                        continue
+                    
+                    if is_new_face:
+                        logger.info(f"New face detected: ID={face_id}, bbox=({x},{y},{w},{h})")
+                    elif needs_verification:
+                        logger.debug(f"Re-processing face {face_id} for verification")
                     
                     # Add margin to the crop (30% on each side for better context)
                     margin_x = int(w * 0.3)

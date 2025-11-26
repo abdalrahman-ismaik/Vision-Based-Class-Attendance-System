@@ -20,31 +20,19 @@ def get_pipeline():
                     logger.info("Initializing face processing pipeline...")
                     _pipeline = FaceProcessingPipeline()
                     
-                    # Try multiple possible classifier locations
-                    classifier_paths = [
-                        os.path.join(STORAGE_DIR, "models", "face_classifier.pkl"),
-                        os.path.join(STORAGE_DIR, "classifiers", "face_classifier.pkl"),
-                        os.path.join(STORAGE_DIR, "models", "classifier.pkl")
-                    ]
+                    # Use single classifier location
+                    classifier_path = os.path.join(STORAGE_DIR, "classifiers", "face_classifier.pkl")
                     
-                    classifier_loaded = False
-                    for classifier_path in classifier_paths:
-                        if os.path.exists(classifier_path):
-                            try:
-                                logger.info(f"Loading classifier from {classifier_path}")
-                                _pipeline.classifier.load(classifier_path)
-                                logger.info(f"✓ Classifier loaded successfully with {len(_pipeline.classifier.student_ids)} students")
-                                logger.info(f"  Students in classifier: {', '.join(_pipeline.classifier.student_ids)}")
-                                classifier_loaded = True
-                                break
-                            except Exception as load_error:
-                                logger.warning(f"Failed to load classifier from {classifier_path}: {load_error}")
-                                continue
-                    
-                    if not classifier_loaded:
-                        logger.warning("No classifier loaded - tried all possible locations:")
-                        for path in classifier_paths:
-                            logger.warning(f"  - {path} {'(exists)' if os.path.exists(path) else '(not found)'}")
+                    if os.path.exists(classifier_path):
+                        try:
+                            logger.info(f"Loading classifier from {classifier_path}")
+                            _pipeline.classifier.load(classifier_path)
+                            logger.info(f"✓ Classifier loaded successfully with {len(_pipeline.classifier.student_ids)} students")
+                            logger.info(f"  Students in classifier: {', '.join(_pipeline.classifier.student_ids)}")
+                        except Exception as load_error:
+                            logger.warning(f"Failed to load classifier from {classifier_path}: {load_error}")
+                    else:
+                        logger.warning(f"No classifier found at {classifier_path}")
                         logger.info("You need to train the classifier before recognition will work")
                     
                     logger.info("Face processing pipeline initialized successfully")
@@ -69,8 +57,8 @@ def retrain_classifier():
     
     try:
         processed_dir = os.path.join(STORAGE_DIR, "processed")
-        # Use models directory (matches settings.py CLASSIFIERS_FOLDER)
-        classifier_path = os.path.join(STORAGE_DIR, "models", "face_classifier.pkl")
+        # Use classifiers directory
+        classifier_path = os.path.join(STORAGE_DIR, "classifiers", "face_classifier.pkl")
         
         if not os.path.exists(processed_dir):
             logger.error(f"Processed directory not found: {processed_dir}")

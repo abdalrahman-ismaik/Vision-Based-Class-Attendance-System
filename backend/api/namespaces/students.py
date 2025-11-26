@@ -229,7 +229,7 @@ class TrainClassifier(Resource):
                 }, 400
             
             # Train classifier
-            classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'classifier.pkl')
+            classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'face_classifier.pkl')
             
             logger.info("Starting classifier training...")
             result = pipeline.train_classifier_from_data(
@@ -342,7 +342,7 @@ class RecognizeFace(Resource):
             # Check if classifier is trained
             if not pipeline.classifier.is_trained:
                 # Try to load if exists
-                classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'classifier.pkl')
+                classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'face_classifier.pkl')
                 if os.path.exists(classifier_path):
                     pipeline.classifier.load(classifier_path)
                 else:
@@ -456,7 +456,7 @@ class VerifyStudentFace(Resource):
             # Check if classifier is trained
             if not pipeline.classifier.is_trained:
                 # Try to load if exists
-                classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'classifier.pkl')
+                classifier_path = os.path.join(CLASSIFIERS_FOLDER, 'face_classifier.pkl')
                 if os.path.exists(classifier_path):
                     pipeline.classifier.load(classifier_path)
                 else:

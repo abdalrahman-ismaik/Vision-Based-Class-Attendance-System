@@ -16,7 +16,7 @@ STORAGE_DIR = os.path.join(BASE_DIR, 'storage')
 UPLOAD_FOLDER = os.path.join(STORAGE_DIR, 'uploads')
 STUDENT_DATA_FOLDER = os.path.join(UPLOAD_FOLDER, 'students')
 PROCESSED_FACES_FOLDER = os.path.join(STORAGE_DIR, 'processed')
-CLASSIFIERS_FOLDER = os.path.join(STORAGE_DIR, 'models')
+CLASSIFIERS_FOLDER = os.path.join(STORAGE_DIR, 'classifiers')
 DATA_DIR = os.path.join(STORAGE_DIR, 'data')
 
 # Database files
