@@ -459,7 +459,7 @@ The system is evaluated using standard machine learning metrics:
 
 **Institution**: Khalifa University  
 **Course**: COSC3030 - Introduction to Artificial Intelligence
-**Instructor**: COSC3030 - Introduction to Artificial Intelligence
+**Instructor**: Dr. Naoufel Werghi
 **Project Type**: Vision-based Class Attendance  
 **Timeline**: 10 weeks (September 3 - November 12, 2025)
 
