@@ -592,7 +592,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Osama Qadan - 100064881
 - Hadher Alameemi - 100063102
 
-**Course Instructor**: [Add instructor information]
+**Course Instructor**: Dr. Naoufel Werghi
 
 ---
 
